@@ -1,0 +1,11 @@
+{
+  "name": "bear-knight",
+  "version": "1.0.0",
+  "description": "Медвежий Рыцарь: Тьма Севера — дарк-фэнтези платформер для браузера и Telegram Mini App",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes serve . -l 4173",
+    "bot": "npm --prefix bot start"
+  }
+}
