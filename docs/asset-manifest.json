@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "art_direction_brief": "docs/art-direction-brief.md",
+  "pack": "moonwatch",
+  "assets": [
+    {
+      "id": "seed-moonwatch",
+      "role": "approved visual target",
+      "path": "assets/art/moonwatch/seed.png",
+      "status": "approved",
+      "technical": { "dimensions": "1280x720", "alpha": false, "frames": 1, "filtering": "linear" },
+      "visual_locks": ["palette", "moon-color", "gothic-spires", "window-lights", "painterly-edges"],
+      "source": {
+        "kind": "generated",
+        "url_or_tool": "Cursor GenerateImage",
+        "creator": "agent",
+        "created_at": "2026-09-09",
+        "license": "generated-for-this-project",
+        "prompt_or_source_record": "Side-view translation of user painterly gothic reference; bear knight, moon, valley town, needle castle."
+      },
+      "verification": { "native_scale_reviewed": true, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "user" }
+    },
+    {
+      "id": "sky",
+      "role": "parallax sky plate",
+      "path": "assets/art/moonwatch/sky.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x720", "alpha": false, "anchor": "cover", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["moon-color", "star-density", "cool-key-light"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" },
+      "verification": { "native_scale_reviewed": false, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "" }
+    },
+    {
+      "id": "far",
+      "role": "far mountains, castle, valley town",
+      "path": "assets/art/moonwatch/far.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x720", "alpha": true, "anchor": "bottom", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["needle-spires", "window-lights", "cool-mountains"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" },
+      "verification": { "native_scale_reviewed": false, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "" }
+    },
+    {
+      "id": "mid",
+      "role": "mid canopy strip",
+      "path": "assets/art/moonwatch/mid.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x720", "alpha": true, "anchor": "bottom", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["canopy-silhouette", "moon-rim"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" },
+      "verification": { "native_scale_reviewed": false, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "" }
+    },
+    {
+      "id": "decor-tree",
+      "role": "grounded pine/canopy prop",
+      "path": "assets/art/moonwatch/tree.png",
+      "status": "draft",
+      "technical": { "dimensions": "552x1111", "alpha": true, "anchor": "bottom-center", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["silhouette", "moon-rim", "trunk-contact"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" },
+      "verification": { "native_scale_reviewed": false, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "" }
+    },
+    {
+      "id": "decor-pillar",
+      "role": "gothic carved pillar",
+      "path": "assets/art/moonwatch/pillar.png",
+      "status": "draft",
+      "technical": { "dimensions": "265x1052", "alpha": true, "anchor": "bottom-center", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["carving-density", "pale-stone", "ruined-top"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" },
+      "verification": { "native_scale_reviewed": false, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "" }
+    },
+    {
+      "id": "decor-arch",
+      "role": "gothic lancet arch",
+      "path": "assets/art/moonwatch/arch.png",
+      "status": "draft",
+      "technical": { "dimensions": "622x1068", "alpha": true, "anchor": "bottom-center", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["lancet-silhouette", "pale-stone"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" },
+      "verification": { "native_scale_reviewed": false, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "" }
+    },
+    {
+      "id": "stone",
+      "role": "repeating solid fill",
+      "path": "assets/art/moonwatch/stone.png",
+      "status": "draft",
+      "technical": { "dimensions": "1024x1024", "alpha": false, "anchor": "repeat", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["weathered-stone", "cool-key-light"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" },
+      "verification": { "native_scale_reviewed": false, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "" }
+    },
+    {
+      "id": "platform",
+      "role": "floating slab strip",
+      "path": "assets/art/moonwatch/platform.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x258", "alpha": true, "anchor": "top", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["moon-rim", "moss", "carved-underside"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" },
+      "verification": { "native_scale_reviewed": false, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "" }
+    },
+    {
+      "id": "ground-top",
+      "role": "solid top cap",
+      "path": "assets/art/moonwatch/ground-top.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x302", "alpha": false, "anchor": "top", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["moss-edge", "moon-rim"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" },
+      "verification": { "native_scale_reviewed": false, "in_engine_reviewed": false, "technical_checks_passed": false, "approved_by": "" }
+    },
+    {
+      "id": "mid-village",
+      "role": "village rooftop mid plate",
+      "path": "assets/art/moonwatch/mid-village.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x720", "alpha": true, "anchor": "bottom", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["warm-window-pins", "timber-roofs"],
+      "source": { "kind": "generated", "url_or_tool": "Cursor GenerateImage", "created_at": "2026-09-09", "license": "generated-for-this-project" }
+    },
+    {
+      "id": "mid-catacombs",
+      "role": "ossuary colonnade mid plate",
+      "path": "assets/art/moonwatch/mid-catacombs.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x720", "alpha": true, "anchor": "bottom", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["lancet-vaults", "crimson-pins"]
+    },
+    {
+      "id": "mid-wastes",
+      "role": "ice-ridge mid plate",
+      "path": "assets/art/moonwatch/mid-wastes.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x720", "alpha": true, "anchor": "bottom", "frames": 1, "filtering": "linear" },
+      "visual_locks": ["ice-shards", "cyan-rim"]
+    },
+    {
+      "id": "stone-village",
+      "role": "village cobble fill",
+      "path": "assets/art/moonwatch/stone-village.png",
+      "status": "draft",
+      "technical": { "dimensions": "1024x1024", "alpha": false, "anchor": "repeat", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "stone-catacombs",
+      "role": "catacomb flagstone fill",
+      "path": "assets/art/moonwatch/stone-catacombs.png",
+      "status": "draft",
+      "technical": { "dimensions": "1024x1024", "alpha": false, "anchor": "repeat", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "stone-wastes",
+      "role": "wastes ice-rock fill",
+      "path": "assets/art/moonwatch/stone-wastes.png",
+      "status": "draft",
+      "technical": { "dimensions": "1024x1024", "alpha": false, "anchor": "repeat", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "stone-citadel",
+      "role": "citadel ashlar fill",
+      "path": "assets/art/moonwatch/stone-citadel.png",
+      "status": "draft",
+      "technical": { "dimensions": "1024x1024", "alpha": false, "anchor": "repeat", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "ground-village",
+      "role": "village cobble cap",
+      "path": "assets/art/moonwatch/ground-village.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x302", "alpha": false, "anchor": "top", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "ground-catacombs",
+      "role": "catacomb flagstone cap",
+      "path": "assets/art/moonwatch/ground-catacombs.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x302", "alpha": false, "anchor": "top", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "ground-wastes",
+      "role": "wastes frost cap",
+      "path": "assets/art/moonwatch/ground-wastes.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x302", "alpha": false, "anchor": "top", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "ground-citadel",
+      "role": "citadel paving cap",
+      "path": "assets/art/moonwatch/ground-citadel.png",
+      "status": "draft",
+      "technical": { "dimensions": "1280x302", "alpha": false, "anchor": "top", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "decor-spire",
+      "role": "citadel needle spire",
+      "path": "assets/art/moonwatch/spire.png",
+      "status": "draft",
+      "technical": { "dimensions": "178x1123", "alpha": true, "anchor": "bottom-center", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "decor-bones",
+      "role": "ossuary bone pile",
+      "path": "assets/art/moonwatch/bones.png",
+      "status": "draft",
+      "technical": { "dimensions": "531x1104", "alpha": true, "anchor": "bottom-center", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "decor-ice",
+      "role": "wastes ice shard",
+      "path": "assets/art/moonwatch/ice.png",
+      "status": "draft",
+      "technical": { "dimensions": "605x1026", "alpha": true, "anchor": "bottom-center", "frames": 1, "filtering": "linear" }
+    },
+    {
+      "id": "decor-fence",
+      "role": "village palisade",
+      "path": "assets/art/moonwatch/fence.png",
+      "status": "draft",
+      "technical": { "dimensions": "735x782", "alpha": true, "anchor": "bottom-center", "frames": 1, "filtering": "linear" }
+    }
+  ]
+}
