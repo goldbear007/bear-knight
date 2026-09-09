@@ -240,7 +240,7 @@ export class Game {
     for (const e of this.enemies) {
       if (!e.dead) {
         e.hp = e.maxHp;
-        e.aggro = false;
+        e.dropAggro();
       }
     }
     this.projectiles = [];

@@ -429,6 +429,7 @@ export class Enemy {
     this.vx = 0;
     this.vy = 0;
     this.homeX = x;
+    this.homeY = y;
     this.facing = -1;
     this.onGround = false;
 
@@ -447,6 +448,7 @@ export class Enemy {
     this.swing = 0;
     this.animTime = rand(0, 3);
     this.aggro = false;
+    this.lostTimer = 0;
     this.patrolRange = 110;
     this.phase = 0;
     this.bossAction = null;
@@ -481,7 +483,7 @@ export class Enemy {
     const dx = player.x + player.w / 2 - this.centerX;
     const dy = player.y + player.h / 2 - this.centerY;
     const dist = Math.hypot(dx, dy);
-    if (dist < this.type.aggroRange) this.aggro = true;
+    this.updateAggro(dt, game, dist);
 
     if (this.stun > 0) {
       if (this.type.ai !== "flyer") this.vy = Math.min(this.vy + GRAVITY * dt, MAX_FALL);
@@ -512,6 +514,50 @@ export class Enemy {
     moveBody(this, game.world, dt);
   }
 
+  get detectRange() {
+    return this.type.detectRange ?? this.type.aggroRange ?? 160;
+  }
+
+  get leashRange() {
+    return this.type.leashRange ?? this.detectRange * 1.85;
+  }
+
+  canSeePlayer(game) {
+    const p = game.player;
+    return game.world.hasLineOfSight(this.centerX, this.centerY, p.x + p.w / 2, p.y + p.h * 0.4);
+  }
+
+  dropAggro() {
+    this.aggro = false;
+    this.lostTimer = 0;
+    this.windup = 0;
+    this.swing = 0;
+    this.bossAction = null;
+  }
+
+  /**
+   * Acquire aggro only nearby (and with line of sight). Keep chasing until the
+   * player stays outside the leash for a short grace, so running away actually
+   * breaks combat instead of dragging the whole map.
+   */
+  updateAggro(dt, game, dist) {
+    const dropTime = this.isBoss ? 2.2 : 0.95;
+    if (!this.aggro) {
+      const closeEnough = dist <= 48 || (dist <= this.detectRange && this.canSeePlayer(game));
+      if (closeEnough) {
+        this.aggro = true;
+        this.lostTimer = 0;
+      }
+      return;
+    }
+    if (dist <= this.leashRange) {
+      this.lostTimer = 0;
+      return;
+    }
+    this.lostTimer += dt;
+    if (this.lostTimer >= dropTime) this.dropAggro();
+  }
+
   /** Stops walkers from strolling off ledges unless they are chasing the player. */
   edgeAhead(world) {
     const probeX = this.facing > 0 ? this.x + this.w + 4 : this.x - 4;
@@ -530,7 +576,7 @@ export class Enemy {
       return;
     }
 
-    if (this.aggro && dist < this.type.aggroRange * 1.4) {
+    if (this.aggro) {
       this.facing = Math.sign(dx) || this.facing;
       if (dist > attackRange * 0.8) {
         const blocked = this.hitWall || (this.edgeAhead(game.world) && this.onGround && Math.abs(dx) > 60);
@@ -544,8 +590,13 @@ export class Enemy {
         }
       }
     } else {
-      if (this.x < this.homeX - this.patrolRange) this.facing = 1;
-      if (this.x > this.homeX + this.patrolRange) this.facing = -1;
+      const homeDist = this.x + this.w / 2 - this.homeX;
+      if (Math.abs(homeDist) > this.patrolRange) {
+        this.facing = homeDist > 0 ? -1 : 1;
+      } else {
+        if (this.x < this.homeX - this.patrolRange * 0.85) this.facing = 1;
+        if (this.x > this.homeX + this.patrolRange * 0.85) this.facing = -1;
+      }
       if (this.hitWall || this.edgeAhead(game.world)) this.facing *= -1;
       this.vx = this.facing * this.speed * 0.45;
     }
@@ -555,8 +606,16 @@ export class Enemy {
 
   updateFlyer(dt, game, dx, dy, dist) {
     if (!this.aggro) {
-      this.vx = Math.cos(this.animTime * 1.2) * 40;
-      this.vy = Math.sin(this.animTime * 2.2) * 30;
+      const hx = this.homeX - this.centerX;
+      const hy = this.homeY - this.centerY;
+      this.vx = Math.cos(this.animTime * 1.2) * 36 + hx * 1.35;
+      this.vy = Math.sin(this.animTime * 2.2) * 26 + hy * 1.35;
+      const sp = Math.hypot(this.vx, this.vy);
+      const cap = this.speed * 0.7;
+      if (sp > cap) {
+        this.vx = (this.vx / sp) * cap;
+        this.vy = (this.vy / sp) * cap;
+      }
     } else {
       const nx = dx / (dist || 1);
       const ny = dy / (dist || 1);
@@ -577,20 +636,26 @@ export class Enemy {
   }
 
   updateShooter(dt, game, dx, dist) {
-    this.facing = Math.sign(dx) || this.facing;
-    if (this.aggro && dist < this.type.attackRange) {
-      if (dist < 170) this.vx = -this.facing * this.speed;
-      else this.vx *= 0.8;
+    if (this.aggro) {
+      this.facing = Math.sign(dx) || this.facing;
+      if (dist < this.type.attackRange) {
+        if (dist < 170) this.vx = -this.facing * this.speed;
+        else this.vx *= 0.8;
 
-      if (this.windup > 0) {
-        this.windup -= dt;
-        this.vx *= 0.5;
-        if (this.windup <= 0) this.shoot(game);
-      } else if (this.attackCd <= 0) {
-        this.windup = 0.5;
-        this.attackCd = this.type.attackCooldown;
+        if (this.windup > 0) {
+          this.windup -= dt;
+          this.vx *= 0.5;
+          if (this.windup <= 0) this.shoot(game);
+        } else if (this.attackCd <= 0) {
+          this.windup = 0.5;
+          this.attackCd = this.type.attackCooldown;
+        }
+      } else {
+        this.vx = this.facing * this.speed * 0.7;
+        this.windup = 0;
       }
     } else {
+      this.windup = 0;
       this.vx *= 0.85;
     }
     this.applyGroundPhysics(dt, game);
@@ -633,6 +698,12 @@ export class Enemy {
 
   // ── Boss behaviour ────────────────────────────────────────────────────────
   updateBoss(dt, game, dx, dy, dist) {
+    if (!this.aggro) {
+      this.vx *= 0.85;
+      this.applyGroundPhysics(dt, game);
+      return;
+    }
+
     const hpPct = this.hp / this.maxHp;
     const newPhase = hpPct < 0.35 ? 2 : hpPct < 0.7 ? 1 : 0;
     if (newPhase !== this.phase) {
@@ -760,6 +831,7 @@ export class Enemy {
           const mx = this.centerX + (i === 0 ? -90 : 90);
           const minion = new Enemy(minionType, mx, this.y, game.level);
           minion.aggro = true;
+          minion.lostTimer = 0;
           game.enemies.push(minion);
           game.burst(mx, this.y + this.h, 14, "#b06bff", 140);
         }
@@ -774,6 +846,7 @@ export class Enemy {
     this.hp -= amount;
     this.hurtFlash = 1;
     this.aggro = true;
+    this.lostTimer = 0;
     if (!this.isBoss) {
       this.vx += knockX * 0.5;
       this.vy += knockY * 0.5;

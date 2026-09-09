@@ -1,6 +1,9 @@
 /**
  * Enemy archetypes. `hp`/`damage` are level-1 values and get scaled by the
  * level's `difficulty` multiplier when the world spawns them.
+ *
+ * detectRange — how close the hero must be (and visible) to start a chase.
+ * leashRange  — how far they keep chasing; stay outside ~1s and they give up.
  */
 export const ENEMY_TYPES = {
   ghoul: {
@@ -10,7 +13,7 @@ export const ENEMY_TYPES = {
     hp: 46, damage: 9, speed: 62, xp: 1,
     gold: [8, 16], souls: [1, 2],
     ai: "walker",
-    attackRange: 40, attackCooldown: 1.1, aggroRange: 320,
+    attackRange: 40, attackCooldown: 1.1, detectRange: 160, leashRange: 300,
     colors: { body: "#4a5a48", dark: "#2a3428", eye: "#c8ffb0", cloth: "#2a3228" },
   },
   skeleton: {
@@ -20,7 +23,7 @@ export const ENEMY_TYPES = {
     hp: 62, damage: 13, speed: 86, xp: 2,
     gold: [12, 24], souls: [1, 3],
     ai: "walker",
-    attackRange: 48, attackCooldown: 0.85, aggroRange: 380,
+    attackRange: 48, attackCooldown: 0.85, detectRange: 180, leashRange: 320,
     colors: { body: "#d9d3c2", dark: "#8d876f", eye: "#5fe0ff", cloth: "#3c4658" },
   },
   bat: {
@@ -30,7 +33,7 @@ export const ENEMY_TYPES = {
     hp: 30, damage: 8, speed: 118, xp: 1,
     gold: [6, 12], souls: [1, 2],
     ai: "flyer",
-    attackRange: 30, attackCooldown: 0.7, aggroRange: 420,
+    attackRange: 30, attackCooldown: 0.7, detectRange: 150, leashRange: 260,
     colors: { body: "#4a2f52", dark: "#2a1a30", eye: "#ff5f7a", cloth: "#3a2340" },
   },
   archer: {
@@ -40,7 +43,7 @@ export const ENEMY_TYPES = {
     hp: 48, damage: 12, speed: 52, xp: 2,
     gold: [14, 26], souls: [2, 3],
     ai: "shooter",
-    attackRange: 460, attackCooldown: 1.9, aggroRange: 520,
+    attackRange: 240, attackCooldown: 1.9, detectRange: 210, leashRange: 360,
     projectile: { speed: 340, kind: "arrow", gravity: 120 },
     colors: { body: "#3a4254", dark: "#1e2430", eye: "#d8e8ff", cloth: "#1c2838" },
   },
@@ -51,7 +54,7 @@ export const ENEMY_TYPES = {
     hp: 74, damage: 16, speed: 44, xp: 3,
     gold: [22, 40], souls: [3, 5],
     ai: "shooter",
-    attackRange: 420, attackCooldown: 2.3, aggroRange: 520,
+    attackRange: 220, attackCooldown: 2.3, detectRange: 200, leashRange: 340,
     projectile: { speed: 210, kind: "orb", homing: 1.6 },
     colors: { body: "#2e2438", dark: "#16101c", eye: "#b08cff", cloth: "#1a2830" },
   },
@@ -63,7 +66,7 @@ export const ENEMY_TYPES = {
     gold: [40, 70], souls: [5, 9],
     ai: "walker",
     elite: true,
-    attackRange: 58, attackCooldown: 1.5, aggroRange: 400,
+    attackRange: 58, attackCooldown: 1.5, detectRange: 140, leashRange: 280,
     colors: { body: "#6b4a3a", dark: "#3a2620", eye: "#ff8a3d", cloth: "#4a3324" },
   },
 
@@ -76,7 +79,7 @@ export const ENEMY_TYPES = {
     hp: 900, damage: 26, speed: 66, xp: 30,
     gold: [400, 620], souls: [40, 60],
     ai: "boss",
-    attackRange: 82, attackCooldown: 1.5, aggroRange: 900,
+    attackRange: 82, attackCooldown: 1.5, detectRange: 260, leashRange: 520,
     projectile: { speed: 260, kind: "orb" },
     colors: { body: "#8d8574", dark: "#453f34", eye: "#7fe6ff", cloth: "#2f3a4a" },
   },
@@ -88,7 +91,7 @@ export const ENEMY_TYPES = {
     hp: 1800, damage: 36, speed: 78, xp: 60,
     gold: [900, 1400], souls: [90, 130],
     ai: "boss",
-    attackRange: 96, attackCooldown: 1.25, aggroRange: 1100,
+    attackRange: 96, attackCooldown: 1.25, detectRange: 280, leashRange: 560,
     projectile: { speed: 300, kind: "orb" },
     colors: { body: "#7a4f2c", dark: "#3d2614", eye: "#ff5a2a", cloth: "#5a3418" },
   },

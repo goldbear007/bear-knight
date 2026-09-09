@@ -223,6 +223,17 @@ export class World {
   blocksAt(px, py) {
     return this.isSolid(Math.floor(px / TILE), Math.floor(py / TILE));
   }
+
+  /** True if no solid tiles sit on the segment from (x0,y0) to (x1,y1). */
+  hasLineOfSight(x0, y0, x1, y1) {
+    const dist = Math.hypot(x1 - x0, y1 - y0);
+    const steps = Math.max(1, Math.ceil(dist / 10));
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      if (this.blocksAt(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)) return false;
+    }
+    return true;
+  }
 }
 
 /**
