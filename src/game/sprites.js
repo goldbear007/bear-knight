@@ -1,4 +1,4 @@
-import { shade } from "../core/utils.js";
+import { lerp, shade } from "../core/utils.js";
 
 const DEFAULTS = {
   helm: { main: "#c9bda4", trim: "#6d5c44" },
@@ -9,12 +9,16 @@ const DEFAULTS = {
 };
 
 function limb(ctx, x1, y1, x2, y2, width, color) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width;
   ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
+  ctx.strokeStyle = shade(color, -50);
+  ctx.lineWidth = width + 2.4;
+  ctx.stroke();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
   ctx.stroke();
 }
 
@@ -63,14 +67,106 @@ function drawWeapon(ctx, kind, pal, glowPulse) {
       ctx.fillStyle = shade(blade, 25);
       ctx.fillRect(-17, -40, 34, 4);
       break;
-    default: // sword
-      limb(ctx, 0, 2, 0, 12, 5, grip);
-      poly(ctx, [[-4, 0], [4, 0], [3, -38], [0, -46], [-3, -38]], blade);
-      poly(ctx, [[-1.4, -2], [1.4, -2], [1.0, -38], [-1.0, -38]], shade(blade, 45));
-      poly(ctx, [[-10, -3], [10, -3], [10, 1], [-10, 1]], shade(grip, 40));
-      ellipse(ctx, 0, 13, 3.5, 3.5, shade(grip, 55));
+    default: {
+      ctx.strokeStyle = shade(blade, -55);
+      ctx.lineWidth = 6;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(0, -4);
+      ctx.lineTo(0, -38);
+      ctx.stroke();
+      poly(ctx, [[-2.6, -3], [2.6, -3], [2.0, -34], [0, -42], [-2.0, -34]], blade);
+      poly(ctx, [[-0.9, -5], [0.9, -5], [0.6, -34], [-0.6, -34]], shade(blade, 45));
+      poly(ctx, [[-8, -5], [8, -5], [7, -2], [-7, -2]], shade(grip, 40));
+      limb(ctx, 0, 1, 0, 9, 4.2, grip);
+      ellipse(ctx, 0, 10, 3.2, 3.2, shade(grip, 55));
       break;
+    }
   }
+  ctx.restore();
+}
+
+/**
+ * Shoulder/elbow/wrist rotations. 0 on the sword is tip-up; positive tilts the
+ * point forward. Idle keeps a low guard: forearm out, blade standing in the fist.
+ */
+function weaponArmPose(state, t, attackProgress, combo) {
+  const heavy = state === "heavy";
+  let upper;
+  let elbow;
+  let blade;
+
+  if (attackProgress >= 0) {
+    const windup = heavy ? 0.42 : 0.3;
+    if (combo === 1 && !heavy) {
+      if (attackProgress < 0.32) {
+        const u = attackProgress / 0.32;
+        blade = lerp(0.7, 1.55, u);
+        upper = lerp(0.5, 0.95, u);
+        elbow = lerp(0.9, 0.5, u);
+      } else {
+        const s = (attackProgress - 0.32) / 0.68;
+        blade = lerp(1.55, -0.75, s);
+        upper = lerp(0.95, -0.55, s);
+        elbow = lerp(0.5, 0.28, s);
+      }
+    } else if (attackProgress < windup) {
+      const u = attackProgress / windup;
+      blade = lerp(0.4, heavy ? -1.35 : -1.05, u);
+      upper = lerp(0.3, heavy ? -1.55 : -1.25, u);
+      elbow = lerp(1.05, 0.45, u);
+    } else {
+      const s = (attackProgress - windup) / (1 - windup);
+      blade = lerp(heavy ? -1.35 : -1.05, heavy ? 2.2 : 1.95, s);
+      upper = lerp(heavy ? -1.55 : -1.25, heavy ? 1.7 : 1.5, s);
+      elbow = lerp(0.45, 0.22, s);
+    }
+    return { upper, elbow, wrist: blade + upper + elbow };
+  }
+
+  const run = state === "run" ? Math.sin(t * 13) : 0;
+  if (state === "dash") {
+    upper = 1.1;
+    elbow = 0.32;
+    blade = 1.8;
+  } else if (state === "jump" || state === "fall") {
+    upper = 0.5;
+    elbow = 1.05;
+    blade = 0.9;
+  } else if (state === "run") {
+    upper = 0.58 + run * 0.08;
+    elbow = 1.18;
+    blade = 0.82;
+  } else {
+    upper = 0.55 + Math.sin(t * 2.2) * 0.03;
+    elbow = 1.18;
+    blade = 0.85 + Math.sin(t * 2.2) * 0.03;
+  }
+  return { upper, elbow, wrist: blade + upper + elbow };
+}
+
+function drawGauntlet(ctx, color) {
+  ctx.save();
+  ctx.fillStyle = shade(color, -20);
+  ctx.beginPath();
+  ctx.ellipse(0, 4, 5.8, 5.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(0, 3.6, 5.0, 4.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = shade(color, -50);
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+  ctx.fillStyle = shade(color, 12);
+  ctx.beginPath();
+  ctx.ellipse(4.2, 1.4, 2.0, 2.5, 0.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-3.4, 2.2);
+  ctx.lineTo(3.2, 2.2);
+  ctx.stroke();
   ctx.restore();
 }
 
@@ -144,13 +240,17 @@ export function drawKnight(ctx, player, stats, time) {
   limb(ctx, -4 + legSwing2 * 0.7, -12 - kneeLift, -5 + legSwing2, -1, 8, shade(pal.legs.main, -30));
   ellipse(ctx, -5 + legSwing2, -1.5, 6, 3, shade(pal.legs.trim, -20));
 
-  // ── Back arm ─────────────────────────────────────────────────────────────
-  const backArmAngle = running ? -runCycle * 0.6 : 0.25;
+  // ── Back arm (counterbalance, hangs behind the hip) ──────────────────────
+  const backUpper = running ? -0.15 - runCycle * 0.45 : airborne ? -0.55 : 0.18;
+  const backElbow = running ? 0.55 : airborne ? 0.7 : 0.4;
   ctx.save();
-  ctx.translate(-5, shoulderY + 4);
-  ctx.rotate(backArmAngle);
-  limb(ctx, 0, 0, 0, 15, 7, shade(pal.chest.main, -40));
-  limb(ctx, 0, 15, 3, 26, 6, shade(pal.chest.main, -50));
+  ctx.translate(-6, shoulderY + 3);
+  ctx.rotate(backUpper);
+  limb(ctx, 0, 0, 0, 12, 7, shade(pal.chest.main, -35));
+  ctx.translate(0, 12);
+  ctx.rotate(backElbow);
+  limb(ctx, 0, 0, 0, 11, 6, shade(pal.chest.main, -45));
+  ellipse(ctx, 0, 12, 3.4, 3.2, shade(pal.chest.main, -20));
   ctx.restore();
 
   // ── Torso: bear-plate cuirass ────────────────────────────────────────────
@@ -186,20 +286,6 @@ export function drawKnight(ctx, player, stats, time) {
   ctx.fillRect(-11, hipY - 2, 22, 5);
   ctx.fillStyle = shade(pal.chest.trim, 60);
   ctx.fillRect(-3, hipY - 2.5, 6, 6);
-
-  // ── Pauldron with claws ──────────────────────────────────────────────────
-  ctx.save();
-  ctx.translate(7, shoulderY + 3);
-  ellipse(ctx, 0, 0, 9, 7.5, shade(pal.chest.main, 25));
-  ctx.strokeStyle = shade(pal.chest.trim, 40);
-  ctx.lineWidth = 1.6;
-  for (let i = 0; i < 3; i++) {
-    ctx.beginPath();
-    ctx.moveTo(2 + i * 3, 2);
-    ctx.quadraticCurveTo(7 + i * 3, 6, 5 + i * 3, 10);
-    ctx.stroke();
-  }
-  ctx.restore();
   ctx.restore();
 
   // ── Head: bear skull helm ────────────────────────────────────────────────
@@ -208,13 +294,11 @@ export function drawKnight(ctx, player, stats, time) {
   ctx.translate(1, headY);
   if (running) ctx.rotate(runCycle * 0.03);
 
-  // ears
   ellipse(ctx, -7, -9, 4.2, 4.6, shade(pal.helm.main, -20));
   ellipse(ctx, 8, -9, 4.2, 4.6, shade(pal.helm.main, -20));
   ellipse(ctx, -7, -9, 2.2, 2.4, pal.helm.trim);
   ellipse(ctx, 8, -9, 2.2, 2.4, pal.helm.trim);
 
-  // skull
   ellipse(ctx, 0.5, 0, 10, 9.5, pal.helm.main);
 
   if (pal.cloak) {
@@ -244,7 +328,6 @@ export function drawKnight(ctx, player, stats, time) {
     );
   }
 
-  // muzzle
   poly(
     ctx,
     [
@@ -258,11 +341,9 @@ export function drawKnight(ctx, player, stats, time) {
   );
   ellipse(ctx, 16, 1.5, 2.4, 2.2, shade(pal.helm.trim, -20));
 
-  // fangs
   poly(ctx, [[10, 6], [12, 6], [11, 12]], "#f2ece0");
   poly(ctx, [[13.5, 5.5], [15.5, 5.5], [14.2, 10.5]], "#f2ece0");
 
-  // glowing eye socket
   const glow = 0.6 + Math.sin(time * 4) * 0.25;
   ctx.save();
   ctx.shadowColor = "#d8e8c8";
@@ -271,7 +352,6 @@ export function drawKnight(ctx, player, stats, time) {
   ellipse(ctx, -2, -2, 2.2, 1.8, "#c8e0a8");
   ctx.restore();
 
-  // helm trim
   ctx.strokeStyle = pal.helm.trim;
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -284,36 +364,28 @@ export function drawKnight(ctx, player, stats, time) {
   limb(ctx, 4 + legSwing * 0.7, -12 - kneeLift * 0.4, 5 + legSwing, -1, 8, pal.legs.main);
   ellipse(ctx, 5 + legSwing, -1.5, 6.5, 3.2, pal.legs.trim);
 
-  // ── Weapon arm ───────────────────────────────────────────────────────────
-  let armAngle;
-  if (attackProgress >= 0) {
-    const heavy = state === "heavy";
-    const windup = heavy ? 0.42 : 0.3;
-    if (attackProgress < windup) {
-      armAngle = -2.2 - (attackProgress / windup) * (heavy ? 1.0 : 0.6);
-    } else {
-      const swing = (attackProgress - windup) / (1 - windup);
-      armAngle = -2.2 - (heavy ? 1.0 : 0.6) + swing * (heavy ? 4.4 : 3.6);
-    }
-    if (player.attackCombo === 1 && !heavy) armAngle = -armAngle * 0.6 + 0.6;
-  } else if (running) {
-    armAngle = 0.5 + runCycle * 0.55;
-  } else if (airborne) {
-    armAngle = 0.9;
-  } else if (state === "dash") {
-    armAngle = 1.9;
-  } else {
-    armAngle = 0.55 + Math.sin(t * 2.2) * 0.06;
-  }
+  ctx.save();
+  ctx.translate(12, shoulderY + 1);
+  ellipse(ctx, 0, 0, 8.5, 7, shade(pal.chest.main, 28));
+  ctx.restore();
+
+  // ── Weapon arm: bent elbow, fist on the grip, blade up-forward ───────────
+  const pose = weaponArmPose(state, t, attackProgress, player.attackCombo);
+  const sleeve = "#8b6a4e";
+  const gauntlet = "#d2c4a4";
 
   ctx.save();
-  ctx.translate(6, shoulderY + 5);
-  ctx.rotate(armAngle);
-  limb(ctx, 0, 0, 0, 14, 7.5, pal.chest.main);
-  limb(ctx, 0, 14, 0, 24, 6.5, shade(pal.chest.main, 15));
-  ctx.translate(0, 24);
-  ctx.rotate(0.35);
+  ctx.translate(14, shoulderY + 2);
+  ctx.rotate(-pose.upper);
+  limb(ctx, 0, 0, 0, 10, 7.2, sleeve);
+  ellipse(ctx, 0, 10, 3.4, 3.2, shade(sleeve, -25));
+  ctx.translate(0, 10);
+  ctx.rotate(-pose.elbow);
+  limb(ctx, 0, 0, 0, 13, 6.2, shade(sleeve, 15));
+  ctx.translate(0, 13);
+  ctx.rotate(pose.wrist);
   drawWeapon(ctx, stats.weaponKind, pal.weapon, Math.sin(time * 3) * 0.5 + 0.5);
+  drawGauntlet(ctx, gauntlet);
   ctx.restore();
 
   ctx.restore();
