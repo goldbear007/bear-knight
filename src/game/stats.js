@@ -33,7 +33,7 @@ function baseStats() {
     rageDamage: 0,
     rageLifesteal: 0,
     canDash: false,
-    canDoubleJump: false,
+    maxJumps: 2,
     canAirDash: false,
     dashCharges: 1,
     dashDamage: 0,

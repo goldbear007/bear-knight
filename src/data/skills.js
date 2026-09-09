@@ -123,10 +123,10 @@ export const SKILLS = [
   {
     id: "hunt-doublejump",
     branch: "hunt",
-    name: "Второй прыжок",
+    name: "Воздушный шаг",
     col: 0, row: 2, maxRank: 1, cost: 6, icon: "wing",
-    desc: () => "Позволяет прыгнуть ещё раз в воздухе",
-    apply: (s) => { s.canDoubleJump = true; },
+    desc: () => "Ещё один прыжок в воздухе (третий)",
+    apply: (s) => { s.maxJumps += 1; },
     requires: [{ id: "hunt-dash", rank: 1 }],
   },
   {

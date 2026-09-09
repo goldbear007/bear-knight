@@ -58,6 +58,11 @@ export class Input {
       const action = el.dataset.action;
       const start = (e) => {
         e.preventDefault();
+        try {
+          el.setPointerCapture(e.pointerId);
+        } catch {
+          /* older WebViews may not support capture */
+        }
         el.classList.add("is-held");
         this.press(action);
       };
@@ -69,7 +74,7 @@ export class Input {
       el.addEventListener("pointerdown", start);
       el.addEventListener("pointerup", end);
       el.addEventListener("pointercancel", end);
-      el.addEventListener("pointerleave", end);
+      el.addEventListener("lostpointercapture", end);
       el.addEventListener("contextmenu", (e) => e.preventDefault());
     }
   }

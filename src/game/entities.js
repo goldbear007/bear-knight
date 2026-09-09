@@ -51,7 +51,7 @@ export class Player {
     this.dashCharges = stats.dashCharges;
     this.dashHitSet = new Set();
 
-    this.jumpsLeft = 1;
+    this.jumpsLeft = stats.maxJumps || 2;
     this.coyote = 0;
     this.jumpBuffer = 0;
     this.invuln = 0;
@@ -141,11 +141,13 @@ export class Player {
     if (input.justPressed("jump")) this.jumpBuffer = JUMP_BUFFER;
     this.jumpBuffer = Math.max(0, this.jumpBuffer - dt);
     this.coyote = this.onGround ? COYOTE : Math.max(0, this.coyote - dt);
-    if (this.onGround) this.jumpsLeft = s.canDoubleJump ? 2 : 1;
+    const maxJumps = s.maxJumps || 2;
+    if (this.onGround) this.jumpsLeft = maxJumps;
 
-    const canJump = this.coyote > 0 || (s.canDoubleJump && this.jumpsLeft > 0 && !this.onGround);
-    if (this.jumpBuffer > 0 && canJump && !dashing) {
-      const airJump = !this.onGround && this.coyote <= 0;
+    const canGroundJump = this.coyote > 0;
+    const canAirJump = !this.onGround && this.coyote <= 0 && this.jumpsLeft > 0;
+    if (this.jumpBuffer > 0 && (canGroundJump || canAirJump) && !dashing) {
+      const airJump = canAirJump;
       this.vy = -JUMP_VEL * (airJump ? 0.92 : 1);
       this.jumpBuffer = 0;
       this.coyote = 0;
@@ -153,7 +155,6 @@ export class Player {
       this.onGround = false;
       Sfx.play("jump");
       if (airJump) game.burst(this.x + this.w / 2, this.y + this.h, 8, "#8fd8ff", 90);
-      // Drop through one-way platforms when holding down.
       if (input.isDown("down")) {
         this.dropThrough = true;
         this.vy = 120;
