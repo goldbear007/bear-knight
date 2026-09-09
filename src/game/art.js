@@ -7,13 +7,59 @@ export const Art = {
   sky: null,
   far: null,
   mid: null,
+  farVillage: null,
+  farWastes: null,
+  farCitadel: null,
+  farCatacombs: null,
+  midVillage: null,
+  midCatacombs: null,
+  midWastes: null,
+  midCitadel: null,
   tree: null,
   pillar: null,
   arch: null,
   stone: null,
+  stoneForest: null,
+  stoneVillage: null,
+  stoneCatacombs: null,
+  stoneWastes: null,
+  stoneCitadel: null,
   platform: null,
+  platformForest: null,
   groundTop: null,
+  groundForest: null,
+  groundVillage: null,
+  groundCatacombs: null,
+  groundWastes: null,
+  groundCitadel: null,
+  bush: null,
+  spikes: null,
+  chest: null,
+  grave: null,
+  firepit: null,
+  firepitUnlit: null,
+  rock: null,
+  house: null,
+  lamp: null,
+  wall: null,
+  window: null,
+  spire: null,
+  bones: null,
+  ice: null,
+  fence: null,
+  weapons: {},
 };
+
+const WEAPON_IDS = [
+  "rusty-sword",
+  "hunter-dagger",
+  "iron-longsword",
+  "bear-claw-axe",
+  "wolfbane-blade",
+  "grimhollow-maul",
+  "moonfang-saber",
+  "dread-bear-cleaver",
+];
 
 const patternCache = new Map();
 
@@ -25,12 +71,23 @@ function loadImage(src) {
       console.warn("Moonwatch art missing:", src);
       resolve(null);
     };
-    img.src = src;
+    img.src = `${src}?v=9`;
   });
 }
 
 export async function loadArt() {
-  const [sky, far, mid, tree, pillar, arch, stone, platform, groundTop] = await Promise.all([
+  const [
+    sky, far, mid, tree, pillar, arch, stone, platform, groundTop,
+    bush, spikes, chest, grave, firepit, firepitUnlit, rock,
+    house, lamp, wall, window,
+    farVillage, farWastes, farCitadel, farCatacombs,
+    midVillage, midCatacombs, midWastes, midCitadel,
+    stoneForest, stoneVillage, stoneCatacombs, stoneWastes, stoneCitadel,
+    groundForest, groundVillage, groundCatacombs, groundWastes, groundCitadel,
+    platformForest,
+    spire, bones, ice, fence,
+    ...weaponImgs
+  ] = await Promise.all([
     loadImage(`${BASE}/sky.png`),
     loadImage(`${BASE}/far.png`),
     loadImage(`${BASE}/mid.png`),
@@ -40,20 +97,80 @@ export async function loadArt() {
     loadImage(`${BASE}/stone.png`),
     loadImage(`${BASE}/platform.png`),
     loadImage(`${BASE}/ground-top.png`),
+    loadImage(`${BASE}/bush.png`),
+    loadImage(`${BASE}/spikes.png`),
+    loadImage(`${BASE}/chest.png`),
+    loadImage(`${BASE}/grave.png`),
+    loadImage(`${BASE}/firepit.png`),
+    loadImage(`${BASE}/firepit-unlit.png`),
+    loadImage(`${BASE}/rock.png`),
+    loadImage(`${BASE}/house.png`),
+    loadImage(`${BASE}/lamp.png`),
+    loadImage(`${BASE}/wall.png`),
+    loadImage(`${BASE}/window.png`),
+    loadImage(`${BASE}/far-village.png`),
+    loadImage(`${BASE}/far-wastes.png`),
+    loadImage(`${BASE}/far-citadel.png`),
+    loadImage(`${BASE}/far-catacombs.png`),
+    loadImage(`${BASE}/mid-village.png`),
+    loadImage(`${BASE}/mid-catacombs.png`),
+    loadImage(`${BASE}/mid-wastes.png`),
+    loadImage(`${BASE}/mid-citadel.png`),
+    loadImage(`${BASE}/stone-forest.png`),
+    loadImage(`${BASE}/stone-village.png`),
+    loadImage(`${BASE}/stone-catacombs.png`),
+    loadImage(`${BASE}/stone-wastes.png`),
+    loadImage(`${BASE}/stone-citadel.png`),
+    loadImage(`${BASE}/ground-forest.png`),
+    loadImage(`${BASE}/ground-village.png`),
+    loadImage(`${BASE}/ground-catacombs.png`),
+    loadImage(`${BASE}/ground-wastes.png`),
+    loadImage(`${BASE}/ground-citadel.png`),
+    loadImage(`${BASE}/platform-forest.png`),
+    loadImage(`${BASE}/spire.png`),
+    loadImage(`${BASE}/bones.png`),
+    loadImage(`${BASE}/ice.png`),
+    loadImage(`${BASE}/fence.png`),
+    ...WEAPON_IDS.map((id) => loadImage(`${BASE}/weapon-${id}.png`)),
   ]);
+  const weapons = {};
+  WEAPON_IDS.forEach((id, i) => {
+    weapons[id] = weaponImgs[i] || null;
+  });
   Object.assign(Art, {
-    sky,
-    far,
-    mid,
-    tree,
-    pillar,
-    arch,
-    stone,
-    platform,
-    groundTop,
+    sky, far, mid, tree, pillar, arch, stone, platform, groundTop,
+    bush, spikes, chest, grave, firepit, firepitUnlit, rock,
+    house, lamp, wall, window,
+    farVillage, farWastes, farCitadel, farCatacombs,
+    midVillage, midCatacombs, midWastes, midCitadel,
+    stoneForest, stoneVillage, stoneCatacombs, stoneWastes, stoneCitadel,
+    groundForest, groundVillage, groundCatacombs, groundWastes, groundCitadel,
+    platformForest,
+    spire, bones, ice, fence,
+    weapons,
     ready: true,
   });
   return Art;
+}
+
+export function farPlate(biome) {
+  return [Art.far, Art.farVillage, Art.farCatacombs, Art.farWastes, Art.farCitadel][biome] || Art.far;
+}
+
+export function midPlate(biome) {
+  return [Art.mid, Art.midVillage, Art.midCatacombs, Art.midWastes, Art.midCitadel][biome] || null;
+}
+
+export function stonePlate(biome) {
+  return [Art.stoneForest, Art.stoneVillage, Art.stoneCatacombs, Art.stoneWastes, Art.stoneCitadel][biome] || Art.stone;
+}
+
+export function groundTopPlate(biome) {
+  return [Art.groundForest, Art.groundVillage, Art.groundCatacombs, Art.groundWastes, Art.groundCitadel][biome] || Art.groundTop;
+}
+
+export function platformPlate(biome) {
+  return [Art.platformForest, Art.platform, Art.platform, Art.platform, Art.platform][biome] || Art.platform;
 }
 
 /**
@@ -135,14 +252,14 @@ export function drawProp(ctx, img, x, y, height, opts = {}) {
   if (!img || height <= 4) return false;
   const flip = opts.flip ?? false;
   const alpha = opts.alpha ?? 1;
-  const scale = height / img.height;
-  const w = img.width * scale;
+  const h = Math.round(height);
+  const w = Math.max(2, Math.round(img.width * (h / img.height)));
   ctx.save();
   paintSmooth(ctx);
   ctx.globalAlpha = alpha;
-  ctx.translate(x, y);
+  ctx.translate(Math.round(x), Math.round(y));
   if (flip) ctx.scale(-1, 1);
-  ctx.drawImage(img, -w / 2, -height, w, height);
+  ctx.drawImage(img, -w / 2, -h, w, h);
   ctx.restore();
   return true;
 }

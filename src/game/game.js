@@ -120,7 +120,7 @@ export class Game {
 
     const tx = Math.floor(this.world.spawn.x / TILE);
     const groundY = this.world.groundLine[tx] * TILE;
-    this.player = new Player(this.stats, this.world.spawn.x, groundY - 52);
+    this.player = new Player(this.stats, this.world.spawn.x, groundY - 56);
     this.player.onGround = true;
     this.enemies = [];
     this.chests = [];

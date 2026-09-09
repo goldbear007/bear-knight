@@ -1,4 +1,5 @@
 import { Telegram } from "./telegram.js";
+import { LEVELS } from "../data/levels.js";
 
 const SAVE_VERSION = 1;
 const KEY = () => `bearknight_save_${Telegram.userKey}`;
@@ -45,7 +46,7 @@ export function createDefaultSave() {
       cloak: null,
     },
     potions: { "minor-elixir": 3 },
-    unlockedLevels: 1,
+    unlockedLevels: LEVELS.length,
     clearedLevels: [],
     stats: { kills: 0, deaths: 0, runs: 0, playtimeMs: 0, bossKills: 0, lootFound: 0 },
     settings: { muted: false },
@@ -98,7 +99,7 @@ function decode(data) {
     souls: data.s ?? 0,
     skills: data.sk || {},
     potions: data.p || {},
-    unlockedLevels: data.u || 1,
+    unlockedLevels: Math.max(data.u || 1, LEVELS.length),
     clearedLevels: Array.isArray(data.c) ? data.c : [],
     inventory: inventory.length ? inventory : base.inventory,
     equipped: inventory.length ? equipped : base.equipped,
@@ -132,6 +133,7 @@ function migrate(data) {
     merged.equipped = base.equipped;
   }
   if (!Array.isArray(merged.clearedLevels)) merged.clearedLevels = [];
+  merged.unlockedLevels = Math.max(merged.unlockedLevels || 1, LEVELS.length);
   merged.version = SAVE_VERSION;
   return merged;
 }

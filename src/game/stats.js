@@ -45,6 +45,7 @@ function baseStats() {
     cooldownMult: 1,
     abilityPower: 0,
     weaponKind: "sword",
+    weaponId: null,
     palette: {},
   };
 }
@@ -60,6 +61,7 @@ export function computeStats(save) {
     palette[slot] = item.palette;
     if (slot === "weapon") {
       s.weaponKind = item.kind || "sword";
+      s.weaponId = item.id;
       s.attackSpeed = item.stats.attackSpeed ?? 1;
     }
     for (const [key, value] of Object.entries(item.stats)) {

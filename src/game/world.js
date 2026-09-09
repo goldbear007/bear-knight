@@ -10,13 +10,83 @@ const LEVEL_HEIGHT = 22;
 const BASE_GROUND = 15;
 const ARENA_TILES = 30;
 
-const DECOR_BY_BIOME = {
-  0: ["tree", "tree", "tree", "pillar", "stone"],
-  1: ["pillar", "house", "tree", "grave", "lamp"],
-  2: ["arch", "pillar", "grave", "stone", "arch"],
-  3: ["stone", "stone", "pillar", "grave"],
-  4: ["arch", "pillar", "spire", "pillar", "tree"],
-};
+function plantDecor(world, rng, groundLine, arenaStart) {
+  const add = (tx, kind, opts = {}) => {
+    if (tx < 2 || tx >= world.w - 2) return;
+    if (groundLine[tx] < 0) return;
+    world.decor.push({
+      x: tx * TILE + (opts.jitter ?? rng.range(-6, 6)),
+      y: groundLine[tx] * TILE,
+      kind,
+      scale: opts.scale ?? rng.range(0.85, 1.2),
+      layer: opts.layer ?? (rng.chance(0.45) ? 0 : 1),
+      seed: rng.int(0, 9999),
+    });
+  };
+
+  const biome = world.cfg.id;
+  if (biome === 0) {
+    for (let tx = 4; tx < arenaStart; tx += rng.int(3, 7)) {
+      add(tx, rng.chance(0.72) ? "tree" : "bush", {
+        scale: rng.range(0.9, 1.5),
+        layer: rng.chance(0.65) ? 0 : 1,
+      });
+    }
+    for (let tx = 10; tx < arenaStart; tx += rng.int(11, 18)) {
+      add(tx, "pillar", { scale: rng.range(0.75, 1.05), layer: 0 });
+    }
+    for (let tx = 6; tx < arenaStart; tx += rng.int(4, 8)) {
+      add(tx, "rock", { scale: rng.range(0.7, 1.15), layer: 1 });
+    }
+  } else if (biome === 1) {
+    for (let tx = 8; tx < arenaStart - 4; tx += rng.int(11, 17)) {
+      add(tx, "house", { scale: rng.range(1.05, 1.38), layer: 0, jitter: rng.range(-3, 3) });
+      add(tx + 3, "lamp", { scale: rng.range(0.9, 1.12), layer: 1, jitter: 0 });
+    }
+    for (let tx = 5; tx < arenaStart; tx += rng.int(5, 9)) {
+      add(tx, "fence", { scale: rng.range(0.8, 1.15), layer: 1 });
+    }
+    for (let tx = 14; tx < arenaStart; tx += rng.int(14, 22)) {
+      add(tx, "grave", { scale: rng.range(0.85, 1.15), layer: 1 });
+    }
+  } else if (biome === 2) {
+    for (let tx = 4; tx < arenaStart; tx += rng.int(5, 8)) {
+      add(tx, rng.chance(0.55) ? "pillar" : "arch", { scale: rng.range(0.95, 1.32), layer: 0 });
+    }
+    for (let tx = 8; tx < arenaStart; tx += rng.int(7, 12)) {
+      add(tx, "window", { scale: rng.range(0.85, 1.18), layer: 0 });
+    }
+    for (let tx = 5; tx < arenaStart; tx += rng.int(4, 7)) {
+      add(tx, rng.chance(0.55) ? "bones" : "grave", { scale: rng.range(0.7, 1.12), layer: 1 });
+    }
+  } else if (biome === 3) {
+    for (let tx = 4; tx < arenaStart; tx += rng.int(4, 8)) {
+      add(tx, rng.chance(0.7) ? "ice" : "rock", {
+        scale: rng.range(0.85, 1.45),
+        layer: rng.chance(0.4) ? 0 : 1,
+      });
+    }
+    for (let tx = 12; tx < arenaStart; tx += rng.int(13, 21)) {
+      add(tx, "pillar", { scale: rng.range(0.65, 0.95), layer: 0 });
+    }
+    for (let tx = 18; tx < arenaStart; tx += rng.int(18, 28)) {
+      add(tx, "grave", { layer: 1 });
+    }
+  } else {
+    for (let tx = 4; tx < arenaStart; tx += rng.int(6, 10)) {
+      add(tx, rng.chance(0.5) ? "wall" : "spire", { scale: rng.range(1.0, 1.38), layer: 0 });
+    }
+    for (let tx = 7; tx < arenaStart; tx += rng.int(8, 13)) {
+      add(tx, "window", { scale: rng.range(0.9, 1.22), layer: 0 });
+    }
+    for (let tx = 6; tx < arenaStart; tx += rng.int(7, 12)) {
+      add(tx, "lamp", { scale: rng.range(0.9, 1.12), layer: 1, jitter: 0 });
+    }
+    for (let tx = 14; tx < arenaStart; tx += rng.int(14, 20)) {
+      add(tx, "arch", { scale: rng.range(0.95, 1.22), layer: 0 });
+    }
+  }
+}
 
 export class World {
   constructor(levelCfg) {
@@ -189,20 +259,7 @@ export class World {
       ? { type: cfg.boss, x: (this.w - 12) * TILE, y: (BASE_GROUND - 4) * TILE }
       : null;
 
-    // Background decoration seeds resolved by the renderer.
-    const kinds = DECOR_BY_BIOME[cfg.id] || DECOR_BY_BIOME[0];
-    for (let tx = 0; tx < this.w; tx += 2) {
-      if (groundLine[tx] < 0) continue;
-      if (!rng.chance(0.35)) continue;
-      this.decor.push({
-        x: tx * TILE + rng.range(-8, 8),
-        y: groundLine[tx] * TILE,
-        kind: rng.pick(kinds),
-        scale: rng.range(0.7, 1.5),
-        layer: rng.chance(0.5) ? 0 : 1,
-        seed: rng.int(0, 9999),
-      });
-    }
+    plantDecor(this, rng, groundLine, arenaStart);
   }
 
   /** True if the AABB overlaps any spike tile. */

@@ -1,6 +1,6 @@
 import { TILE, SOLID, PLATFORM, SPIKE } from "./world.js";
 import { drawKnight, drawSwingArc, drawEnemy } from "./sprites.js";
-import { Art, drawSkyCover, drawTiledLayer, drawProp, tilePattern } from "./art.js";
+import { Art, drawSkyCover, drawTiledLayer, drawProp, tilePattern, farPlate, midPlate, stonePlate, groundTopPlate, platformPlate } from "./art.js";
 import { clamp, makeRng, roundRect, formatNum, shade } from "../core/utils.js";
 
 const starCache = new Map();
@@ -53,7 +53,7 @@ export function drawBackground(ctx, world, camera, time, W, H) {
     ctx.fillRect(0, 0, W, H);
   }
 
-  const starCount = paintedSky ? 24 : 140;
+  const starCount = paintedSky ? 24 : biome === 2 ? 12 : 140;
   ctx.save();
   for (const s of stars(world.cfg.seed, starCount, W, H)) {
     const twinkle = 0.35 + Math.abs(Math.sin(time * 1.6 + s.tw)) * 0.65;
@@ -63,7 +63,7 @@ export function drawBackground(ctx, world, camera, time, W, H) {
   }
   ctx.restore();
 
-  if (!paintedSky) {
+  if (!paintedSky && biome !== 2) {
     const moonX = W * 0.78 - camera.x * 0.03;
     const moonY = H * 0.18;
     ctx.save();
@@ -84,40 +84,71 @@ export function drawBackground(ctx, world, camera, time, W, H) {
     ctx.restore();
   }
 
-  if (outdoor && Art.far) {
-    const farAlpha = biome === 3 ? 0.72 : 0.94;
-    drawTiledLayer(ctx, Art.far, camera.x, 0.07, W, H, { heightRatio: 0.94, alpha: farAlpha });
+  const far = farPlate(biome);
+  if (far) {
+    const farAlpha = biome === 2 ? 0.92 : biome === 3 ? 0.82 : 0.94;
+    const farH = biome === 2 ? 1 : 0.94;
+    drawTiledLayer(ctx, far, camera.x, 0.07, W, H, { heightRatio: farH, alpha: farAlpha });
   } else {
     ridge(ctx, camera.x, 0.08, H * 0.72, 120, 46, p.far, world.cfg.seed + 11, W, H);
     ridge(ctx, camera.x, 0.18, H * 0.86, 90, 34, p.mid, world.cfg.seed + 22, W, H);
   }
 
-  if (outdoor && Art.mid && biome !== 3) {
-    const midAlpha = biome === 1 ? 0.7 : biome === 4 ? 0.5 : 0.88;
-    drawTiledLayer(ctx, Art.mid, camera.x, 0.2, W, H, { heightRatio: 0.38, alpha: midAlpha });
+  const mid = midPlate(biome);
+  if (mid) {
+    const midH = [0.38, 0.46, 0.72, 0.42, 0.4][biome] || 0.4;
+    const midAlpha = biome === 2 ? 0.82 : 0.9;
+    drawTiledLayer(ctx, mid, camera.x, 0.2, W, H, { heightRatio: midH, alpha: midAlpha });
   }
 
-  ridge(ctx, camera.x, 0.32, H * 1.02, 56, 26, p.near, world.cfg.seed + 33, W, H);
+  if (biome !== 2) {
+    ridge(ctx, camera.x, 0.32, H * 1.02, biome === 4 ? 36 : 56, 26, p.near, world.cfg.seed + 33, W, H);
+  }
 
   ctx.fillStyle = p.fog;
-  ctx.fillRect(0, H * 0.55, W, H * 0.45);
+  ctx.fillRect(0, biome === 2 ? H * 0.42 : H * 0.55, W, H);
 }
 
-/** Ambient motes: moonlight dust, ash or embers depending on the biome. */
+/** Ambient motes: moonlight dust, ash, ossuary dust, ice or citadel sparks. */
 export function drawWeather(ctx, world, camera, time, W, H) {
   const rng = makeRng(world.cfg.seed + 99);
   const p = world.cfg.palette;
-  const warm = world.cfg.id === 1 || world.cfg.id === 4;
+  const biome = world.cfg.id;
   ctx.save();
-  ctx.fillStyle = warm ? p.accent : p.moonRim || p.moon;
-  for (let i = 0; i < 70; i++) {
+  const count = biome === 3 ? 90 : 70;
+  for (let i = 0; i < count; i++) {
     const seedX = rng() * 2000;
-    const speed = 8 + rng() * 18;
     const drift = rng() * 80;
-    const size = 1 + rng() * 2;
-    const x = ((seedX - camera.x * 0.35 + Math.sin(time * 0.35 + i) * drift) % (W + 60) + W + 60) % (W + 60) - 30;
-    const y = ((rng() * H + time * speed) % (H + 40)) - 20;
-    ctx.globalAlpha = 0.1 + (i % 5) * 0.03;
+    const size = biome === 3 ? 1 + rng() * 2.4 : 1 + rng() * 2;
+    let speed;
+    let color;
+    let alpha;
+    if (biome === 1) {
+      speed = 24 + rng() * 36;
+      color = p.accent;
+      alpha = 0.1 + (i % 5) * 0.035;
+    } else if (biome === 2) {
+      speed = -(8 + rng() * 14);
+      color = p.accent;
+      alpha = 0.08 + (i % 5) * 0.03;
+    } else if (biome === 3) {
+      speed = 18 + rng() * 28;
+      color = p.moonRim || p.moon;
+      alpha = 0.12 + (i % 5) * 0.04;
+    } else if (biome === 4) {
+      speed = 6 + rng() * 12;
+      color = p.accent;
+      alpha = 0.08 + (i % 6) * 0.025;
+    } else {
+      speed = 8 + rng() * 18;
+      color = p.moonRim || p.moon;
+      alpha = 0.1 + (i % 5) * 0.03;
+    }
+    const wind = biome === 3 ? time * 28 : biome === 1 ? time * 12 : 0;
+    const x = ((seedX - camera.x * 0.35 + Math.sin(time * 0.35 + i) * drift + wind) % (W + 60) + W + 60) % (W + 60) - 30;
+    const y = ((rng() * H + time * speed) % (H + 40) + H + 40) % (H + 40) - 20;
+    ctx.fillStyle = color;
+    ctx.globalAlpha = alpha;
     ctx.fillRect(x, y, size, size);
   }
   ctx.restore();
@@ -128,17 +159,52 @@ function drawDecorItem(ctx, d, palette) {
   const far = d.layer === 0;
   const dark = far ? -45 : -20;
   const flip = d.seed % 2 === 0;
-  const alpha = far ? 0.72 : 1;
+  const alpha = far ? 0.9 : 1;
 
   if (d.kind === "tree") {
-    const h = (far ? 118 : 86) * d.scale;
+    const h = (far ? 156 : 118) * d.scale;
     if (drawProp(ctx, Art.tree, d.x, d.y, h, { flip, alpha })) return;
-  } else if (d.kind === "pillar" || d.kind === "spire") {
-    const h = (d.kind === "spire" ? 132 : 96) * d.scale * (far ? 1.1 : 1);
+  } else if (d.kind === "pillar") {
+    const h = 128 * d.scale * (far ? 1.08 : 1);
     if (drawProp(ctx, Art.pillar, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "spire") {
+    const h = 176 * d.scale * (far ? 1.1 : 1);
+    if (drawProp(ctx, Art.spire, d.x, d.y, h, { flip, alpha })) return;
+    if (drawProp(ctx, Art.pillar, d.x, d.y, h * 0.85, { flip, alpha })) return;
   } else if (d.kind === "arch") {
-    const h = (far ? 120 : 96) * d.scale;
+    const h = (far ? 148 : 118) * d.scale;
     if (drawProp(ctx, Art.arch, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "bush") {
+    const h = (far ? 48 : 40) * d.scale;
+    if (drawProp(ctx, Art.bush, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "grave") {
+    const h = (far ? 62 : 52) * d.scale;
+    if (drawProp(ctx, Art.grave, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "stone" || d.kind === "rock") {
+    const h = (far ? 28 : 22) * d.scale;
+    if (drawProp(ctx, Art.rock, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "house") {
+    const h = (far ? 92 : 78) * d.scale;
+    if (drawProp(ctx, Art.house, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "lamp") {
+    const h = (far ? 64 : 56) * d.scale;
+    if (drawProp(ctx, Art.lamp, d.x, d.y, h, { flip: false, alpha })) return;
+  } else if (d.kind === "wall") {
+    const h = (far ? 148 : 124) * d.scale;
+    if (drawProp(ctx, Art.wall, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "window") {
+    const h = (far ? 96 : 78) * d.scale;
+    if (drawProp(ctx, Art.window, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "bones") {
+    const h = (far ? 44 : 36) * d.scale;
+    if (drawProp(ctx, Art.bones, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "ice") {
+    const h = (far ? 42 : 32) * d.scale;
+    if (drawProp(ctx, Art.ice, d.x, d.y, h, { flip, alpha })) return;
+    if (drawProp(ctx, Art.rock, d.x, d.y, h * 0.9, { flip, alpha })) return;
+  } else if (d.kind === "fence") {
+    const h = (far ? 44 : 38) * d.scale;
+    if (drawProp(ctx, Art.fence, d.x, d.y, h, { flip, alpha })) return;
   }
 
   ctx.save();
@@ -210,13 +276,46 @@ function drawDecorItem(ctx, d, palette) {
     ctx.beginPath();
     ctx.arc(0, -32, 5, 0, Math.PI * 2);
     ctx.fill();
-  } else if (d.kind === "grave") {
+  } else if (d.kind === "wall" || d.kind === "window") {
+    ctx.fillStyle = shade(palette.ground, dark + 14);
+    ctx.fillRect(-16, -70, 32, 70);
+    ctx.fillStyle = shade(palette.ground, dark + 22);
+    ctx.fillRect(-20, -78, 8, 18);
+    ctx.fillRect(-4, -84, 8, 24);
+    ctx.fillRect(12, -78, 8, 18);
+    if (d.kind === "window") {
+      ctx.fillStyle = "#e0a45a";
+      ctx.globalAlpha = 0.75;
+      ctx.fillRect(-6, -48, 10, 16);
+      ctx.globalAlpha = 1;
+    }
+  } else if (d.kind === "grave" || d.kind === "bones") {
     ctx.fillStyle = shade(palette.ground, dark + 16);
     roundRect(ctx, -10, -30, 20, 30, 9);
     ctx.fill();
     ctx.fillStyle = shade(palette.ground, dark - 10);
     ctx.fillRect(-5, -22, 10, 3);
     ctx.fillRect(-2, -26, 4, 14);
+  } else if (d.kind === "fence") {
+    ctx.strokeStyle = shade(palette.ground, dark + 8);
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-16, 0);
+    ctx.lineTo(-16, -22);
+    ctx.moveTo(16, 0);
+    ctx.lineTo(16, -20);
+    ctx.moveTo(-18, -16);
+    ctx.lineTo(18, -14);
+    ctx.moveTo(-16, -8);
+    ctx.lineTo(16, -7);
+    ctx.stroke();
+  } else if (d.kind === "bush") {
+    ctx.fillStyle = shade(palette.groundTop || palette.accent, dark);
+    ctx.beginPath();
+    ctx.ellipse(-6, -10, 10, 9, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(7, -11, 11, 10, 0.15, 0, Math.PI * 2);
+    ctx.ellipse(0, -16, 9, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
   } else {
     ctx.fillStyle = shade(palette.ground, dark + 8);
     ctx.beginPath();
@@ -228,6 +327,7 @@ function drawDecorItem(ctx, d, palette) {
 
 export function drawWorld(ctx, world, camera, time, W, H) {
   const p = world.cfg.palette;
+  const biome = world.cfg.id;
   const x0 = Math.max(0, Math.floor(camera.ox / TILE) - 1);
   const x1 = Math.min(world.w - 1, Math.ceil((camera.ox + W) / TILE) + 1);
   const y0 = Math.max(0, Math.floor(camera.oy / TILE) - 1);
@@ -249,7 +349,7 @@ export function drawWorld(ctx, world, camera, time, W, H) {
 
       if (tile === SOLID) {
         const isTop = world.get(tx, ty - 1) !== SOLID;
-        const stone = tilePattern(ctx, Art.stone, 96, p.ground);
+        const stone = tilePattern(ctx, stonePlate(biome), 96, p.ground);
         if (stone) {
           ctx.fillStyle = stone;
           ctx.fillRect(px, py, TILE, TILE);
@@ -258,10 +358,11 @@ export function drawWorld(ctx, world, camera, time, W, H) {
           ctx.fillRect(px, py, TILE, TILE);
         }
         if (isTop) {
-          const cap = tilePattern(ctx, Art.groundTop, 14, p.groundTop);
+          const capH = biome === 0 ? 20 : 14;
+          const cap = tilePattern(ctx, groundTopPlate(biome), capH, p.groundTop);
           if (cap) {
             ctx.fillStyle = cap;
-            ctx.fillRect(px, py, TILE, 14);
+            ctx.fillRect(px, py, TILE, capH);
           } else {
             ctx.fillStyle = p.groundTop;
             ctx.fillRect(px, py, TILE, 7);
@@ -269,14 +370,29 @@ export function drawWorld(ctx, world, camera, time, W, H) {
             ctx.fillRect(px, py + 7, TILE, 3);
           }
           ctx.fillStyle = p.moonRim || shade(p.moon, -20);
-          ctx.globalAlpha = 0.32;
-          ctx.fillRect(px, py, TILE, 2);
+          ctx.globalAlpha = biome === 0 ? 0.16 : 0.32;
+          ctx.fillRect(px, py, TILE, biome === 0 ? 1 : 2);
           ctx.globalAlpha = 1;
-          ctx.fillStyle = p.accent;
-          const h = ((tx * 37) % 5) + 2;
-          ctx.globalAlpha = 0.35;
-          ctx.fillRect(px + ((tx * 13) % 22), py - h, 2, h);
-          ctx.globalAlpha = 1;
+          if (biome === 0 && Art.bush && (tx * 17) % 7 === 0) {
+            drawProp(ctx, Art.bush, px + ((tx * 13) % 18) + 6, py + 2, 16 + (tx % 3) * 4, {
+              flip: tx % 2 === 0,
+              alpha: 0.9,
+            });
+          } else if (biome === 1 && Art.rock && (tx * 19) % 9 === 0) {
+            drawProp(ctx, Art.rock, px + 14, py + 2, 14, { flip: tx % 2 === 0, alpha: 0.85 });
+          } else if (biome === 2 && Art.bones && (tx * 17) % 9 === 0) {
+            drawProp(ctx, Art.bones, px + 16, py + 2, 18, { flip: tx % 2 === 0, alpha: 0.88 });
+          } else if (biome === 3 && Art.ice && (tx * 17) % 8 === 0) {
+            drawProp(ctx, Art.ice, px + 14, py + 2, 16, { flip: tx % 2 === 0, alpha: 0.9 });
+          } else if (biome === 4 && Art.rock && (tx * 17) % 8 === 0) {
+            drawProp(ctx, Art.rock, px + 14, py + 2, 14, { flip: tx % 2 === 0, alpha: 0.9 });
+          } else if (biome === 0) {
+            ctx.fillStyle = p.accent;
+            const h = ((tx * 37) % 5) + 2;
+            ctx.globalAlpha = 0.35;
+            ctx.fillRect(px + ((tx * 13) % 22), py - h, 2, h);
+            ctx.globalAlpha = 1;
+          }
         } else {
           ctx.fillStyle = "rgba(0,0,0,0.18)";
           ctx.fillRect(px, py, TILE, TILE);
@@ -285,7 +401,7 @@ export function drawWorld(ctx, world, camera, time, W, H) {
         const slabH = 18;
         ctx.fillStyle = "rgba(0,0,0,0.35)";
         ctx.fillRect(px + 1, py + slabH - 1, TILE - 2, 4);
-        const slab = tilePattern(ctx, Art.platform, slabH, p.groundTop);
+        const slab = tilePattern(ctx, platformPlate(biome), slabH, p.groundTop);
         if (slab) {
           ctx.fillStyle = slab;
           ctx.fillRect(px, py, TILE, slabH);
@@ -300,18 +416,26 @@ export function drawWorld(ctx, world, camera, time, W, H) {
         ctx.fillRect(px, py, TILE, 2);
         ctx.globalAlpha = 1;
       } else if (tile === SPIKE) {
-        ctx.fillStyle = "#cdd3dd";
-        for (let i = 0; i < 4; i++) {
-          const sx = px + i * 8;
-          ctx.beginPath();
-          ctx.moveTo(sx, py + TILE);
-          ctx.lineTo(sx + 4, py + 6);
-          ctx.lineTo(sx + 8, py + TILE);
-          ctx.closePath();
-          ctx.fill();
+        if (Art.spikes) {
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(Art.spikes, px, py, TILE, TILE);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = "#cdd3dd";
+          for (let i = 0; i < 4; i++) {
+            const sx = px + i * 8;
+            ctx.beginPath();
+            ctx.moveTo(sx, py + TILE);
+            ctx.lineTo(sx + 4, py + 6);
+            ctx.lineTo(sx + 8, py + TILE);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.fillStyle = "rgba(180,40,50,0.55)";
+          ctx.fillRect(px, py + TILE - 4, TILE, 4);
         }
-        ctx.fillStyle = "rgba(180,40,50,0.55)";
-        ctx.fillRect(px, py + TILE - 4, TILE, 4);
       }
     }
   }
@@ -327,38 +451,48 @@ export function drawWorld(ctx, world, camera, time, W, H) {
 export function drawCheckpoint(ctx, cp, time) {
   const cx = cp.x + cp.w / 2;
   const baseY = cp.y + cp.h;
+  const lit = Boolean(cp.lit);
+  const sprite = lit ? Art.firepit || Art.firepitUnlit : Art.firepitUnlit || Art.firepit;
+  const height = lit ? 72 : 38;
   ctx.save();
-  ctx.fillStyle = "#2b2118";
-  for (let i = -1; i <= 1; i++) {
-    ctx.save();
-    ctx.translate(cx, baseY);
-    ctx.rotate(i * 0.45);
-    ctx.fillRect(-2.5, -18, 5, 18);
-    ctx.restore();
-  }
-  if (cp.lit) {
-    const flick = 0.75 + Math.sin(time * 9 + cp.x) * 0.25;
+  if (lit) {
+    const flick = 0.86 + Math.sin(time * 8 + cp.x) * 0.14;
     ctx.globalCompositeOperation = "lighter";
-    const g = ctx.createRadialGradient(cx, baseY - 22, 2, cx, baseY - 22, 70 * flick);
-    g.addColorStop(0, "rgba(255,190,110,0.85)");
+    const g = ctx.createRadialGradient(cx, baseY - 22, 4, cx, baseY - 22, 52 * flick);
+    g.addColorStop(0, `rgba(255,207,107,${0.22 * flick})`);
+    g.addColorStop(0.4, `rgba(224,164,90,${0.1 * flick})`);
     g.addColorStop(1, "rgba(255,140,40,0)");
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(cx, baseY - 22, 70 * flick, 0, Math.PI * 2);
+    ctx.arc(cx, baseY - 22, 52 * flick, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#ffcf6b";
-    ctx.beginPath();
-    ctx.moveTo(cx - 8, baseY - 14);
-    ctx.quadraticCurveTo(cx - 3, baseY - 30 * flick, cx, baseY - 40 * flick);
-    ctx.quadraticCurveTo(cx + 4, baseY - 28 * flick, cx + 8, baseY - 14);
-    ctx.closePath();
-    ctx.fill();
-  } else {
-    ctx.globalAlpha = 0.5;
-    ctx.fillStyle = "#5a5048";
-    ctx.beginPath();
-    ctx.arc(cx, baseY - 18, 7, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.globalCompositeOperation = "source-over";
+  }
+  if (!drawProp(ctx, sprite, cx, baseY + 2, height)) {
+    ctx.fillStyle = "#2b2118";
+    for (let i = -1; i <= 1; i++) {
+      ctx.save();
+      ctx.translate(cx, baseY);
+      ctx.rotate(i * 0.45);
+      ctx.fillRect(-2.5, -18, 5, 18);
+      ctx.restore();
+    }
+    if (lit) {
+      const flick = 0.75 + Math.sin(time * 9 + cp.x) * 0.25;
+      ctx.fillStyle = "#ffcf6b";
+      ctx.beginPath();
+      ctx.moveTo(cx - 8, baseY - 10);
+      ctx.quadraticCurveTo(cx - 3, baseY - 26 * flick, cx, baseY - 36 * flick);
+      ctx.quadraticCurveTo(cx + 4, baseY - 24 * flick, cx + 8, baseY - 10);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.globalAlpha = 0.5;
+      ctx.fillStyle = "#5a5048";
+      ctx.beginPath();
+      ctx.arc(cx, baseY - 18, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
   ctx.restore();
 }
@@ -367,45 +501,49 @@ export function drawChest(ctx, chest, time) {
   const { x, y, w, h } = chest;
   ctx.save();
   if (chest.opened) {
-    ctx.globalAlpha = 0.75;
+    ctx.globalAlpha = 0.72;
   } else {
     const glow = 0.5 + Math.sin(time * 3 + x) * 0.5;
     ctx.globalCompositeOperation = "lighter";
     const g = ctx.createRadialGradient(x + w / 2, y + h / 2, 2, x + w / 2, y + h / 2, 48);
-    g.addColorStop(0, `rgba(255,210,120,${0.22 + glow * 0.16})`);
-    g.addColorStop(1, "rgba(255,180,60,0)");
+    g.addColorStop(0, `rgba(200,234,216,${0.16 + glow * 0.12})`);
+    g.addColorStop(1, "rgba(200,234,216,0)");
     ctx.fillStyle = g;
     ctx.fillRect(x - 40, y - 40, w + 80, h + 80);
     ctx.globalCompositeOperation = "source-over";
   }
-  ctx.fillStyle = "#5b3a20";
-  ctx.fillRect(x, y + 8, w, h - 8);
-  ctx.fillStyle = "#7a5029";
-  if (chest.opened) {
-    ctx.save();
-    ctx.translate(x, y + 10);
-    ctx.rotate(-0.9);
-    ctx.fillRect(0, -10, w, 10);
-    ctx.restore();
-  } else {
-    ctx.fillRect(x, y, w, 11);
+  if (!drawProp(ctx, Art.chest, x + w / 2, y + h, h + 16, { alpha: chest.opened ? 0.75 : 1 })) {
+    ctx.fillStyle = "#5b3a20";
+    ctx.fillRect(x, y + 8, w, h - 8);
+    ctx.fillStyle = "#7a5029";
+    if (chest.opened) {
+      ctx.save();
+      ctx.translate(x, y + 10);
+      ctx.rotate(-0.9);
+      ctx.fillRect(0, -10, w, 10);
+      ctx.restore();
+    } else {
+      ctx.fillRect(x, y, w, 11);
+    }
+    ctx.fillStyle = "#c9a24a";
+    ctx.fillRect(x + w / 2 - 3, y + 8, 6, 8);
+    ctx.fillStyle = "#3a2415";
+    ctx.fillRect(x, y + h - 4, w, 4);
   }
-  ctx.fillStyle = "#c9a24a";
-  ctx.fillRect(x + w / 2 - 3, y + 8, 6, 8);
-  ctx.fillStyle = "#3a2415";
-  ctx.fillRect(x, y + h - 4, w, 4);
   ctx.restore();
 }
 
 export function drawPortal(ctx, exit, time, active) {
   const cx = exit.x + exit.w / 2;
   const cy = exit.y + exit.h / 2;
+  const baseY = exit.y + exit.h;
   ctx.save();
+  drawProp(ctx, Art.arch, cx, baseY, exit.h + 28, { alpha: active ? 1 : 0.5 });
   ctx.globalCompositeOperation = "lighter";
   const pulse = 0.7 + Math.sin(time * 3) * 0.3;
-  const color = active ? [140, 220, 255] : [120, 90, 110];
+  const color = active ? [200, 234, 216] : [120, 90, 110];
   const g = ctx.createRadialGradient(cx, cy, 4, cx, cy, 90 * pulse);
-  g.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${active ? 0.85 : 0.3})`);
+  g.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${active ? 0.8 : 0.28})`);
   g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = g;
   ctx.beginPath();
@@ -413,13 +551,13 @@ export function drawPortal(ctx, exit, time, active) {
   ctx.fill();
 
   ctx.globalCompositeOperation = "source-over";
-  ctx.strokeStyle = active ? "#9fe3ff" : "#6b5a68";
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = active ? "#c8ead8" : "#6b5a68";
+  ctx.lineWidth = 2;
   for (let i = 0; i < 3; i++) {
     const r = 16 + i * 10;
-    ctx.globalAlpha = active ? 0.8 - i * 0.2 : 0.3;
+    ctx.globalAlpha = active ? 0.7 - i * 0.18 : 0.28;
     ctx.beginPath();
-    ctx.ellipse(cx, cy, r * 0.7, r, Math.sin(time * 1.2 + i) * 0.3, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, r * 0.55, r, Math.sin(time * 1.2 + i) * 0.25, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.restore();
@@ -556,7 +694,7 @@ export function drawFloaters(ctx, floaters) {
   for (const f of floaters) {
     const alpha = clamp(f.life / f.maxLife, 0, 1);
     ctx.globalAlpha = alpha;
-    ctx.font = `700 ${Math.round(15 * f.scale)}px "Segoe UI", system-ui, sans-serif`;
+    ctx.font = `700 ${Math.round(15 * f.scale)}px ${UI_SANS}`;
     ctx.lineWidth = 3;
     ctx.strokeStyle = "rgba(0,0,0,0.7)";
     ctx.strokeText(f.text, f.x, f.y);
@@ -612,6 +750,7 @@ export function drawEntities(ctx, game, time) {
 /** Moonlight vignette + a thin warm fill only near the knight. */
 export function drawLighting(ctx, game, W, H) {
   const p = game.player;
+  const biome = game.level.id;
   const cx = p.x + p.w / 2 - game.camera.ox;
   const cy = p.y + p.h / 2 - game.camera.oy;
 
@@ -619,21 +758,48 @@ export function drawLighting(ctx, game, W, H) {
   ctx.globalCompositeOperation = "multiply";
   const g = ctx.createRadialGradient(cx, cy, 70, cx, cy, 640);
   g.addColorStop(0, "rgba(255,255,255,1)");
-  g.addColorStop(0.5, "rgba(196, 210, 224, 1)");
-  g.addColorStop(1, "rgba(78, 92, 118, 1)");
+  if (biome === 2) {
+    g.addColorStop(0.5, "rgba(214, 186, 198, 1)");
+    g.addColorStop(1, "rgba(48, 24, 40, 1)");
+  } else if (biome === 3) {
+    g.addColorStop(0.5, "rgba(186, 214, 226, 1)");
+    g.addColorStop(1, "rgba(52, 78, 96, 1)");
+  } else if (biome === 1) {
+    g.addColorStop(0.5, "rgba(214, 198, 186, 1)");
+    g.addColorStop(1, "rgba(70, 58, 72, 1)");
+  } else if (biome === 4) {
+    g.addColorStop(0.5, "rgba(200, 194, 214, 1)");
+    g.addColorStop(1, "rgba(58, 48, 78, 1)");
+  } else {
+    g.addColorStop(0.5, "rgba(196, 210, 224, 1)");
+    g.addColorStop(1, "rgba(78, 92, 118, 1)");
+  }
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  const moon = ctx.createRadialGradient(W * 0.74, H * 0.16, 20, W * 0.74, H * 0.16, 420);
-  moon.addColorStop(0, "rgba(200, 234, 216, 0.14)");
-  moon.addColorStop(1, "rgba(200, 234, 216, 0)");
-  ctx.fillStyle = moon;
-  ctx.fillRect(0, 0, W, H);
+  if (biome === 2) {
+    const crypt = ctx.createRadialGradient(W * 0.5, H * 0.18, 10, W * 0.5, H * 0.18, 380);
+    crypt.addColorStop(0, "rgba(196, 90, 138, 0.12)");
+    crypt.addColorStop(1, "rgba(196, 90, 138, 0)");
+    ctx.fillStyle = crypt;
+    ctx.fillRect(0, 0, W, H);
+  } else {
+    const moonTint = biome === 3
+      ? [184, 224, 255, 0.16]
+      : biome === 4
+        ? [208, 200, 224, 0.12]
+        : [200, 234, 216, 0.14];
+    const moon = ctx.createRadialGradient(W * 0.74, H * 0.16, 20, W * 0.74, H * 0.16, 420);
+    moon.addColorStop(0, `rgba(${moonTint[0]}, ${moonTint[1]}, ${moonTint[2]}, ${moonTint[3]})`);
+    moon.addColorStop(1, `rgba(${moonTint[0]}, ${moonTint[1]}, ${moonTint[2]}, 0)`);
+    ctx.fillStyle = moon;
+    ctx.fillRect(0, 0, W, H);
+  }
   const warm = ctx.createRadialGradient(cx, cy, 8, cx, cy, 130);
-  warm.addColorStop(0, "rgba(255,170,90,0.07)");
+  warm.addColorStop(0, biome === 2 ? "rgba(255,140,110,0.06)" : "rgba(255,170,90,0.07)");
   warm.addColorStop(1, "rgba(255,140,40,0)");
   ctx.fillStyle = warm;
   ctx.fillRect(0, 0, W, H);
@@ -641,6 +807,9 @@ export function drawLighting(ctx, game, W, H) {
 }
 
 // ── HUD ────────────────────────────────────────────────────────────────────
+
+const UI_SANS = '"Source Sans 3", "Segoe UI", system-ui, sans-serif';
+const UI_DISPLAY = 'Forum, "Cormorant Garamond", Palatino, serif';
 
 function bar(ctx, x, y, w, h, ratio, color, bg, label) {
   ctx.fillStyle = "rgba(0,0,0,0.55)";
@@ -654,7 +823,7 @@ function bar(ctx, x, y, w, h, ratio, color, bg, label) {
   ctx.fill();
   if (label) {
     ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.font = '600 10px "Segoe UI", system-ui, sans-serif';
+    ctx.font = `600 10px ${UI_SANS}`;
     ctx.textAlign = "left";
     ctx.fillText(label, x + 5, y + h - 3);
   }
@@ -671,7 +840,7 @@ function abilityIcon(ctx, x, y, size, label, key, ready, cdRatio, color) {
   ctx.stroke();
 
   ctx.fillStyle = ready ? color : "rgba(150,140,165,0.5)";
-  ctx.font = '700 16px "Segoe UI", system-ui, sans-serif';
+  ctx.font = `700 16px ${UI_SANS}`;
   ctx.textAlign = "center";
   ctx.fillText(label, x + size / 2, y + size / 2 + 6);
 
@@ -681,7 +850,7 @@ function abilityIcon(ctx, x, y, size, label, key, ready, cdRatio, color) {
   }
 
   ctx.fillStyle = "rgba(210,205,220,0.75)";
-  ctx.font = '600 9px "Segoe UI", system-ui, sans-serif';
+  ctx.font = `600 9px ${UI_SANS}`;
   ctx.fillText(key, x + size / 2, y + size + 10);
   ctx.restore();
 }
@@ -708,7 +877,7 @@ export function drawHud(ctx, game, W, H) {
 
   // Currency
   ctx.textAlign = "right";
-  ctx.font = '700 15px "Segoe UI", system-ui, sans-serif';
+  ctx.font = `700 15px ${UI_SANS}`;
   ctx.fillStyle = "#ffcf5f";
   ctx.fillText(`◈ ${formatNum(game.save.gold)}`, W - 18, 30);
   ctx.fillStyle = "#7fd6ff";
@@ -717,7 +886,7 @@ export function drawHud(ctx, game, W, H) {
   // Level name + progress
   const progress = clamp((p.x / (game.world.pixelWidth - 200)) * 100, 0, 100);
   ctx.textAlign = "center";
-  ctx.font = '600 12px "Segoe UI", system-ui, sans-serif';
+  ctx.font = `600 12px ${UI_DISPLAY}`;
   ctx.fillStyle = "rgba(220,214,230,0.7)";
   ctx.fillText(`${game.level.name} — ${progress.toFixed(0)}%`, W / 2, 26);
   ctx.fillStyle = "rgba(255,255,255,0.16)";
@@ -752,7 +921,7 @@ export function drawHud(ctx, game, W, H) {
     const bw = Math.min(460, W - 120);
     const bx = W / 2 - bw / 2;
     ctx.textAlign = "center";
-    ctx.font = '700 14px "Segoe UI", system-ui, sans-serif';
+    ctx.font = `400 14px ${UI_DISPLAY}`;
     ctx.fillStyle = "#f0e6d0";
     ctx.fillText(boss.type.name.toUpperCase(), W / 2, H - 44);
     bar(ctx, bx, H - 36, bw, 12, boss.hp / boss.maxHp, "#b0303a", "rgba(40,12,16,0.9)");
@@ -763,7 +932,7 @@ export function drawHud(ctx, game, W, H) {
   // Contextual prompt
   if (game.prompt) {
     ctx.textAlign = "center";
-    ctx.font = '600 13px "Segoe UI", system-ui, sans-serif';
+    ctx.font = `600 13px ${UI_SANS}`;
     ctx.fillStyle = "rgba(0,0,0,0.6)";
     const tw = ctx.measureText(game.prompt).width + 24;
     roundRect(ctx, W / 2 - tw / 2, H * 0.72, tw, 26, 6);
@@ -777,7 +946,7 @@ export function drawHud(ctx, game, W, H) {
   let ty = 84;
   for (const toast of game.toasts) {
     ctx.globalAlpha = clamp(toast.life / 0.6, 0, 1);
-    ctx.font = '600 13px "Segoe UI", system-ui, sans-serif';
+    ctx.font = `600 13px ${UI_SANS}`;
     ctx.fillStyle = "rgba(0,0,0,0.55)";
     const tw = ctx.measureText(toast.text).width + 18;
     roundRect(ctx, W - 18 - tw, ty - 15, tw, 22, 5);

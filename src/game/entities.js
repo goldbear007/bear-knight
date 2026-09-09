@@ -10,8 +10,8 @@ const COYOTE = 0.1;
 const JUMP_BUFFER = 0.12;
 
 const WEAPON_SHAPES = {
-  dagger: { reach: 44, height: 34, light: 0.34, heavy: 0.58, knock: 130 },
-  sword: { reach: 56, height: 42, light: 0.4, heavy: 0.66, knock: 190 },
+  dagger: { reach: 36, height: 26, light: 0.28, heavy: 0.5, knock: 110 },
+  sword: { reach: 64, height: 48, light: 0.42, heavy: 0.7, knock: 200 },
   axe: { reach: 62, height: 48, light: 0.5, heavy: 0.8, knock: 260 },
   hammer: { reach: 66, height: 54, light: 0.58, heavy: 0.92, knock: 340 },
 };
@@ -21,7 +21,7 @@ const STAMINA_COST = { light: 11, heavy: 24, dash: 20 };
 export class Player {
   constructor(stats, x, y) {
     this.w = 30;
-    this.h = 52;
+    this.h = 56;
     this.x = x;
     this.y = y;
     this.vx = 0;

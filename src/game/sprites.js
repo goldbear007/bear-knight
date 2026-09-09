@@ -1,10 +1,47 @@
 import { lerp, shade } from "../core/utils.js";
+import { Art } from "./art.js";
+
+/**
+ * Fist sits at this fraction of the sprite (0 = tip, 1 = pommel).
+ * Swords: at the crossguard so the guard sits on the fist and the hilt hangs below.
+ * Axes/mauls: middle of the long haft.
+ * Daggers: short knife, still under the guard.
+ */
+const WEAPON_GRIP_Y = {
+  "rusty-sword": 0.68,
+  "iron-longsword": 0.72,
+  "wolfbane-blade": 0.64,
+  "hunter-dagger": 0.62,
+  "moonfang-saber": 0.72,
+  "bear-claw-axe": 0.66,
+  "grimhollow-maul": 0.59,
+  "dread-bear-cleaver": 0.76,
+};
+
+/** Whole-sprite height in knight pixels. Daggers stay small; polearms stay long. */
+const WEAPON_DRAW_H = {
+  "hunter-dagger": 20,
+  "moonfang-saber": 38,
+  "rusty-sword": 50,
+  "wolfbane-blade": 48,
+  "iron-longsword": 56,
+  "bear-claw-axe": 58,
+  "grimhollow-maul": 62,
+  "dread-bear-cleaver": 54,
+};
+
+const WEAPON_DRAW_H_KIND = {
+  dagger: 20,
+  sword: 50,
+  axe: 58,
+  hammer: 62,
+};
 
 const DEFAULTS = {
   helm: { main: "#c9bda4", trim: "#6d5c44" },
   chest: { main: "#6b5540", trim: "#3a2b1e", fur: "#4a3a2b" },
   legs: { main: "#544539", trim: "#33291f" },
-  cloak: { main: "#16382f", trim: "#0c221c" },
+  cloak: { main: "#3a4634", trim: "#252e22" },
   weapon: { blade: "#8a8f99", grip: "#4a3527", glow: null },
 };
 
@@ -38,7 +75,30 @@ function poly(ctx, points, color) {
   ctx.fill();
 }
 
-function drawWeapon(ctx, kind, pal, glowPulse) {
+function drawWeaponSprite(ctx, img, weaponId, kind, pal, glowPulse) {
+  const gripFrac = WEAPON_GRIP_Y[weaponId] ?? 0.78;
+  const holdH = WEAPON_DRAW_H[weaponId] ?? WEAPON_DRAW_H_KIND[kind] ?? 50;
+  const scale = holdH / img.height;
+  const w = img.width * scale;
+  const h = img.height * scale;
+  ctx.save();
+  if (pal?.glow) {
+    ctx.shadowColor = pal.glow;
+    ctx.shadowBlur = 8 + glowPulse * 5;
+  }
+  ctx.imageSmoothingEnabled = true;
+  if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, -w / 2, -h * gripFrac, w, h);
+  ctx.restore();
+}
+
+function drawWeapon(ctx, kind, pal, glowPulse, weaponId) {
+  const sprite = weaponId && Art.weapons?.[weaponId];
+  if (sprite && sprite.width && sprite.height) {
+    drawWeaponSprite(ctx, sprite, weaponId, kind, pal, glowPulse);
+    return;
+  }
+
   const blade = pal.blade || "#8a8f99";
   const grip = pal.grip || "#4a3527";
   ctx.save();
@@ -49,37 +109,32 @@ function drawWeapon(ctx, kind, pal, glowPulse) {
 
   switch (kind) {
     case "dagger":
-      limb(ctx, 0, 0, 0, 9, 5, grip);
-      poly(ctx, [[-3, -1], [3, -1], [2, -26], [0, -31], [-2, -26]], blade);
-      poly(ctx, [[-7, -2], [7, -2], [7, 1], [-7, 1]], shade(grip, 30));
+      limb(ctx, 0, 1, 0, 5, 3.4, grip);
+      poly(ctx, [[-2.2, -1], [2.2, -1], [1.6, -16], [0, -20], [-1.6, -16]], blade);
+      poly(ctx, [[-5.5, -2], [5.5, -2], [5.5, 1], [-5.5, 1]], shade(grip, 30));
       break;
     case "axe":
-      limb(ctx, 0, 10, 0, -30, 6, grip);
-      poly(ctx, [[1, -30], [20, -34], [26, -18], [16, -8], [2, -12]], blade);
-      poly(ctx, [[-1, -30], [-16, -33], [-21, -20], [-13, -10], [-2, -13]], shade(blade, -25));
+      // Fist at mid-haft: head above, butt below.
+      limb(ctx, 0, 16, 0, -22, 6, grip);
+      poly(ctx, [[1, -22], [18, -26], [24, -12], [14, -2], [2, -6]], blade);
+      poly(ctx, [[-1, -22], [-14, -25], [-18, -12], [-11, -3], [-2, -7]], shade(blade, -25));
       break;
     case "hammer":
-      limb(ctx, 0, 12, 0, -28, 7, grip);
+      limb(ctx, 0, 18, 0, -20, 7, grip);
       ctx.fillStyle = blade;
-      ctx.fillRect(-17, -40, 34, 20);
+      ctx.fillRect(-16, -34, 32, 18);
       ctx.fillStyle = shade(blade, -35);
-      ctx.fillRect(-17, -26, 34, 6);
+      ctx.fillRect(-16, -22, 32, 6);
       ctx.fillStyle = shade(blade, 25);
-      ctx.fillRect(-17, -40, 34, 4);
+      ctx.fillRect(-16, -34, 32, 4);
       break;
     default: {
-      ctx.strokeStyle = shade(blade, -55);
-      ctx.lineWidth = 6;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(0, -4);
-      ctx.lineTo(0, -38);
-      ctx.stroke();
-      poly(ctx, [[-2.6, -3], [2.6, -3], [2.0, -34], [0, -42], [-2.0, -34]], blade);
-      poly(ctx, [[-0.9, -5], [0.9, -5], [0.6, -34], [-0.6, -34]], shade(blade, 45));
-      poly(ctx, [[-8, -5], [8, -5], [7, -2], [-7, -2]], shade(grip, 40));
-      limb(ctx, 0, 1, 0, 9, 4.2, grip);
-      ellipse(ctx, 0, 10, 3.2, 3.2, shade(grip, 55));
+      // Grip at the origin. Blade extends -Y (up when the sword is world-upright).
+      poly(ctx, [[-6, -3], [6, -3], [7.2, -28], [0, -38], [-7.2, -28]], blade);
+      poly(ctx, [[2.2, -5], [5.2, -5], [5.8, -27], [3.0, -27]], shade(blade, 40));
+      poly(ctx, [[-10, -2], [10, -2], [9, 2], [-9, 2]], shade(grip, 25));
+      limb(ctx, 0, 2, 0, 11, 4.4, grip);
+      ellipse(ctx, 0, 12, 3.4, 3.2, shade(grip, 50));
       break;
     }
   }
@@ -87,92 +142,112 @@ function drawWeapon(ctx, kind, pal, glowPulse) {
 }
 
 /**
- * Shoulder/elbow/wrist rotations. 0 on the sword is tip-up; positive tilts the
- * point forward. Idle keeps a low guard: forearm out, blade standing in the fist.
+ * Sword arm in the forward hand. Idle stands the blade straight up;
+ * attacks flip it along the forearm for the cut.
  */
 function weaponArmPose(state, t, attackProgress, combo) {
   const heavy = state === "heavy";
   let upper;
   let elbow;
-  let blade;
 
   if (attackProgress >= 0) {
-    const windup = heavy ? 0.42 : 0.3;
+    const windup = heavy ? 0.38 : 0.28;
     if (combo === 1 && !heavy) {
-      if (attackProgress < 0.32) {
-        const u = attackProgress / 0.32;
-        blade = lerp(0.7, 1.55, u);
-        upper = lerp(0.5, 0.95, u);
-        elbow = lerp(0.9, 0.5, u);
+      if (attackProgress < 0.3) {
+        const u = attackProgress / 0.3;
+        upper = lerp(0.9, 1.45, u);
+        elbow = lerp(0.48, 0.25, u);
       } else {
-        const s = (attackProgress - 0.32) / 0.68;
-        blade = lerp(1.55, -0.75, s);
-        upper = lerp(0.95, -0.55, s);
-        elbow = lerp(0.5, 0.28, s);
+        const s = (attackProgress - 0.3) / 0.7;
+        upper = lerp(1.45, -1.2, s);
+        elbow = lerp(0.25, 0.2, s);
       }
     } else if (attackProgress < windup) {
       const u = attackProgress / windup;
-      blade = lerp(0.4, heavy ? -1.35 : -1.05, u);
-      upper = lerp(0.3, heavy ? -1.55 : -1.25, u);
-      elbow = lerp(1.05, 0.45, u);
+      upper = lerp(0.9, heavy ? 2.2 : 2.0, u);
+      elbow = lerp(0.48, 0.22, u);
     } else {
       const s = (attackProgress - windup) / (1 - windup);
-      blade = lerp(heavy ? -1.35 : -1.05, heavy ? 2.2 : 1.95, s);
-      upper = lerp(heavy ? -1.55 : -1.25, heavy ? 1.7 : 1.5, s);
-      elbow = lerp(0.45, 0.22, s);
+      upper = lerp(heavy ? 2.2 : 2.0, heavy ? -1.4 : -1.2, s);
+      elbow = lerp(0.22, 0.18, s);
     }
-    return { upper, elbow, wrist: blade + upper + elbow };
-  }
-
-  const run = state === "run" ? Math.sin(t * 13) : 0;
-  if (state === "dash") {
-    upper = 1.1;
+  } else if (state === "dash") {
+    upper = 1.28;
     elbow = 0.32;
-    blade = 1.8;
   } else if (state === "jump" || state === "fall") {
-    upper = 0.5;
-    elbow = 1.05;
-    blade = 0.9;
+    upper = 1.08;
+    elbow = 0.38;
   } else if (state === "run") {
-    upper = 0.58 + run * 0.08;
-    elbow = 1.18;
-    blade = 0.82;
+    upper = 0.88 + Math.sin(t * 13) * 0.05;
+    elbow = 0.48;
   } else {
-    upper = 0.55 + Math.sin(t * 2.2) * 0.03;
-    elbow = 1.18;
-    blade = 0.85 + Math.sin(t * 2.2) * 0.03;
+    upper = 0.9 + Math.sin(t * 2.2) * 0.03;
+    elbow = 0.48;
   }
-  return { upper, elbow, wrist: blade + upper + elbow };
+  const rest = attackProgress < 0;
+  const ru = -upper;
+  const re = -elbow;
+  return {
+    upper: ru,
+    elbow: re,
+    // Idle: cancel the arm so the blade stands world-up. Attack: blade follows the cut.
+    wrist: rest ? -(ru + re) : Math.PI,
+  };
+}
+
+/** Rear arm: 90° guard fist, no weapon. Positive angles tuck the hand behind. */
+function guardArmPose(state, t, attackProgress) {
+  if (attackProgress >= 0) return { upper: 0.12, elbow: 0.82 };
+  if (state === "dash") return { upper: -0.35, elbow: 0.7 };
+  if (state === "jump" || state === "fall") return { upper: 0.55, elbow: 0.88 };
+  if (state === "run") {
+    return { upper: 0.32 - Math.sin(t * 13) * 0.18, elbow: 1.02 };
+  }
+  return { upper: 0.28 + Math.sin(t * 2.2) * 0.03, elbow: 1.08 };
+}
+
+function drawArm(ctx, x, y, upper, elbow, sleeve, forearm, onHand) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(upper);
+  limb(ctx, 0, 0, 0, 12, 6.6, sleeve);
+  ellipse(ctx, 0, 12, 3.1, 3.0, shade(sleeve, -22));
+  ctx.translate(0, 12);
+  ctx.rotate(elbow);
+  limb(ctx, 0, 0, 0, 11, 5.6, forearm);
+  ctx.translate(0, 11);
+  onHand?.(ctx);
+  ctx.restore();
 }
 
 function drawGauntlet(ctx, color) {
   ctx.save();
   ctx.fillStyle = shade(color, -20);
   ctx.beginPath();
-  ctx.ellipse(0, 4, 5.8, 5.2, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 2.2, 5.4, 4.8, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.ellipse(0, 3.6, 5.0, 4.4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, 2.0, 4.6, 4.1, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = shade(color, -50);
   ctx.lineWidth = 1.6;
   ctx.stroke();
   ctx.fillStyle = shade(color, 12);
   ctx.beginPath();
-  ctx.ellipse(4.2, 1.4, 2.0, 2.5, 0.4, 0, Math.PI * 2);
+  ctx.ellipse(3.8, 0.4, 2.0, 2.4, 0.3, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(-3.4, 2.2);
-  ctx.lineTo(3.2, 2.2);
+  ctx.moveTo(-3.2, 1.2);
+  ctx.lineTo(3.0, 1.2);
   ctx.stroke();
   ctx.restore();
 }
 
 /**
- * The hero: a knight wearing a bear-shaped harness. Everything is drawn from
- * primitives so equipment colours can change the look with no art assets.
+ * The hero: a lean dark-fantasy knight. Combat crouch, greatsword in the
+ * forward hand with the blade standing up, rear arm in a 90° guard.
  */
 export function drawKnight(ctx, player, stats, time) {
   const pal = {
@@ -182,6 +257,7 @@ export function drawKnight(ctx, player, stats, time) {
     cloak: stats.palette.cloak || DEFAULTS.cloak,
     weapon: stats.palette.weapon || DEFAULTS.weapon,
   };
+  const cloak = pal.cloak;
 
   const state = player.state;
   const t = player.animTime;
@@ -204,189 +280,145 @@ export function drawKnight(ctx, player, stats, time) {
   const breathe = Math.sin(t * 2.4) * 1.2;
   const running = state === "run";
   const airborne = state === "jump" || state === "fall";
-  const bob = running ? Math.abs(Math.sin(t * 13)) * 2.5 : breathe;
-  const lean = running ? 5 : state === "dash" ? 16 : 0;
+  const bob = running ? Math.abs(Math.sin(t * 13)) * 2.2 : breathe;
 
   let attackProgress = -1;
   if (state === "attack" || state === "heavy") {
     attackProgress = 1 - player.attackTimer / player.attackDuration;
   }
 
-  const hipY = -26 - bob * 0.4;
-  const shoulderY = -44 - bob;
+  const crouch = running || airborne ? 0 : 3;
+  const hipY = -30 - bob * 0.35 + crouch;
+  const shoulderY = -52 - bob + crouch;
+  const idleLean = running ? 0.1 : state === "dash" ? 0.28 : 0.14;
+  const sleeve = shade(pal.chest.main, -12);
+  const gauntlet = shade(pal.helm.main, 8);
+  const gold = pal.chest.trim || "#c56a2a";
+  const fur = pal.chest.fur || shade(pal.helm.main, -10);
+  const swordPose = weaponArmPose(state, t, attackProgress, player.attackCombo);
+  const guardPose = guardArmPose(state, t, attackProgress);
 
-  // ── Cloak ────────────────────────────────────────────────────────────────
-  if (pal.cloak) {
-    const sway = running ? runCycle * 8 : airborne ? -10 : Math.sin(t * 1.8) * 3;
-    ctx.save();
-    ctx.fillStyle = pal.cloak.main;
-    ctx.beginPath();
-    ctx.moveTo(-4, shoulderY - 4);
-    ctx.quadraticCurveTo(-20 - sway, hipY, -14 - sway * 1.4, -2);
-    ctx.lineTo(6 - sway * 0.6, -1);
-    ctx.quadraticCurveTo(8, hipY - 4, 6, shoulderY - 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = pal.cloak.trim;
-    ctx.fillRect(-8, shoulderY - 6, 18, 4);
-    ctx.restore();
+  const legSwing = running ? runCycle * 10 : airborne ? -7 : 0;
+  const legSwing2 = running ? runCycle2 * 10 : airborne ? 6 : 0;
+  const kneeLift = airborne ? 7 : crouch;
+  const backFoot = running || airborne ? -6 + legSwing2 : -9;
+  const frontFoot = running || airborne ? 6 + legSwing : 9;
+
+  // Olive tabard / cloak behind the legs
+  {
+    const sway = running ? runCycle * 5 : airborne ? -8 : Math.sin(t * 1.6) * 2;
+    poly(
+      ctx,
+      [
+        [-6, hipY - 4],
+        [7, hipY - 4],
+        [10 + sway * 0.3, -2],
+        [2, 0],
+        [-8 - sway, -2],
+      ],
+      cloak.main
+    );
+    poly(
+      ctx,
+      [
+        [-3, hipY - 2],
+        [5, hipY - 2],
+        [4, -8],
+        [-2, -8],
+      ],
+      shade(cloak.main, -28)
+    );
   }
 
-  // ── Back leg ─────────────────────────────────────────────────────────────
-  const legSwing = running ? runCycle * 11 : airborne ? -6 : 0;
-  const legSwing2 = running ? runCycle2 * 11 : airborne ? 7 : 0;
-  const kneeLift = airborne ? 6 : 0;
-  limb(ctx, -3, hipY, -4 + legSwing2 * 0.7, -12 - kneeLift, 9, shade(pal.legs.main, -30));
-  limb(ctx, -4 + legSwing2 * 0.7, -12 - kneeLift, -5 + legSwing2, -1, 8, shade(pal.legs.main, -30));
-  ellipse(ctx, -5 + legSwing2, -1.5, 6, 3, shade(pal.legs.trim, -20));
+  // Rear guard arm (behind the body)
+  drawArm(ctx, -8, shoulderY + 4, guardPose.upper, guardPose.elbow, shade(sleeve, -25), shade(sleeve, -35), (c) => {
+    drawGauntlet(c, shade(gauntlet, -15));
+  });
 
-  // ── Back arm (counterbalance, hangs behind the hip) ──────────────────────
-  const backUpper = running ? -0.15 - runCycle * 0.45 : airborne ? -0.55 : 0.18;
-  const backElbow = running ? 0.55 : airborne ? 0.7 : 0.4;
-  ctx.save();
-  ctx.translate(-6, shoulderY + 3);
-  ctx.rotate(backUpper);
-  limb(ctx, 0, 0, 0, 12, 7, shade(pal.chest.main, -35));
-  ctx.translate(0, 12);
-  ctx.rotate(backElbow);
-  limb(ctx, 0, 0, 0, 11, 6, shade(pal.chest.main, -45));
-  ellipse(ctx, 0, 12, 3.4, 3.2, shade(pal.chest.main, -20));
-  ctx.restore();
+  // Back leg (trailing foot)
+  limb(ctx, -4, hipY, -6 + legSwing2 * 0.4, -16 - kneeLift * 0.2, 6.4, shade(pal.legs.main, -28));
+  limb(ctx, -6 + legSwing2 * 0.4, -16 - kneeLift * 0.2, backFoot, -1, 5.8, shade(pal.legs.main, -28));
+  ellipse(ctx, backFoot, -1.2, 5.2, 2.6, shade(pal.legs.trim, -15));
 
-  // ── Torso: bear-plate cuirass ────────────────────────────────────────────
+  // Torso: slender cuirass, gold straps, pale fur collar
   ctx.save();
-  ctx.translate(0, 0);
-  ctx.rotate((lean * Math.PI) / 180 * 0.12);
+  ctx.rotate(idleLean);
 
   poly(
     ctx,
     [
-      [-11, shoulderY + 2],
-      [11, shoulderY + 2],
-      [13, hipY + 6],
-      [9, hipY + 2],
-      [-9, hipY + 2],
-      [-13, hipY + 6],
+      [-9, shoulderY + 3],
+      [10, shoulderY + 1],
+      [8, hipY + 5],
+      [-7, hipY + 6],
     ],
     pal.chest.main
   );
-  // fur collar
-  ctx.fillStyle = pal.chest.fur || shade(pal.chest.main, -25);
-  for (let i = -12; i <= 12; i += 4) {
-    ellipse(ctx, i, shoulderY + 2, 4, 3.4, pal.chest.fur || shade(pal.chest.main, -25));
+  poly(ctx, [[-2, shoulderY + 6], [2.2, shoulderY + 6], [1.6, hipY + 2], [-1.6, hipY + 2]], gold);
+  poly(ctx, [[3.4, shoulderY + 8], [5.4, shoulderY + 8], [4.6, hipY + 1], [2.8, hipY + 1]], shade(gold, -20));
+  ctx.fillStyle = shade(pal.chest.main, -30);
+  ctx.fillRect(-7, hipY, 14, 4);
+
+  for (let i = -8; i <= 9; i += 3.5) {
+    ellipse(ctx, i, shoulderY + 2, 4.2, 3.6, fur);
   }
-  // bear muzzle emblem on the chest
-  ctx.fillStyle = pal.chest.trim;
-  ellipse(ctx, 1, shoulderY + 13, 7.5, 6.5, pal.chest.trim);
-  ellipse(ctx, 1, shoulderY + 16, 3.4, 2.6, shade(pal.chest.trim, 45));
-  ellipse(ctx, -3, shoulderY + 10.5, 1.4, 1.4, "#1a1216");
-  ellipse(ctx, 5, shoulderY + 10.5, 1.4, 1.4, "#1a1216");
-  // belt
-  ctx.fillStyle = shade(pal.chest.trim, -10);
-  ctx.fillRect(-11, hipY - 2, 22, 5);
-  ctx.fillStyle = shade(pal.chest.trim, 60);
-  ctx.fillRect(-3, hipY - 2.5, 6, 6);
   ctx.restore();
 
-  // ── Head: bear skull helm ────────────────────────────────────────────────
-  const headY = shoulderY - 11;
+  // Front leg (lead foot)
+  limb(ctx, 3, hipY, 6 + legSwing * 0.35, -15 - kneeLift * 0.15, 6.2, pal.legs.main);
+  limb(ctx, 6 + legSwing * 0.35, -15 - kneeLift * 0.15, frontFoot, -1, 5.6, pal.legs.main);
+  ellipse(ctx, frontFoot, -1.2, 5.4, 2.6, pal.legs.trim);
+  poly(ctx, [[5, hipY + 2], [7, hipY + 2], [7.4, hipY + 14], [5.2, hipY + 14]], shade(gold, -10));
+
+  // Head: small helm, pale hood/fur, short muzzle
+  const headY = shoulderY - 9;
   ctx.save();
-  ctx.translate(1, headY);
-  if (running) ctx.rotate(runCycle * 0.03);
+  ctx.translate(2, headY);
+  if (running) ctx.rotate(runCycle * 0.025);
 
-  ellipse(ctx, -7, -9, 4.2, 4.6, shade(pal.helm.main, -20));
-  ellipse(ctx, 8, -9, 4.2, 4.6, shade(pal.helm.main, -20));
-  ellipse(ctx, -7, -9, 2.2, 2.4, pal.helm.trim);
-  ellipse(ctx, 8, -9, 2.2, 2.4, pal.helm.trim);
+  ellipse(ctx, -5, -7, 3.4, 3.8, shade(fur, -15));
+  ellipse(ctx, 6, -7, 3.4, 3.8, shade(fur, -15));
+  ellipse(ctx, -5, -7, 1.7, 2.0, pal.helm.trim);
+  ellipse(ctx, 6, -7, 1.7, 2.0, pal.helm.trim);
 
-  ellipse(ctx, 0.5, 0, 10, 9.5, pal.helm.main);
-
-  if (pal.cloak) {
+  if (cloak) {
     poly(
       ctx,
       [
-        [-14, 3],
-        [-13, -8],
-        [-6, -17],
-        [3, -18],
-        [12, -9],
-        [12, 5],
-        [6, -1],
-        [-8, 0],
+        [-11, 4],
+        [-10, -8],
+        [-3, -14],
+        [6, -14],
+        [11, -6],
+        [10, 6],
+        [3, 2],
+        [-6, 3],
       ],
-      pal.cloak.main
-    );
-    poly(
-      ctx,
-      [
-        [-7, -1],
-        [6, -2],
-        [8, 7],
-        [-5, 8],
-      ],
-      shade(pal.cloak.main, -32)
+      shade(cloak.main, 8)
     );
   }
 
-  poly(
-    ctx,
-    [
-      [4, -3],
-      [16, -1],
-      [17, 4],
-      [13, 7],
-      [4, 6],
-    ],
-    shade(pal.helm.main, 12)
-  );
-  ellipse(ctx, 16, 1.5, 2.4, 2.2, shade(pal.helm.trim, -20));
-
-  poly(ctx, [[10, 6], [12, 6], [11, 12]], "#f2ece0");
-  poly(ctx, [[13.5, 5.5], [15.5, 5.5], [14.2, 10.5]], "#f2ece0");
+  ellipse(ctx, 1, 0, 7.4, 7.2, pal.helm.main);
+  poly(ctx, [[3, -1], [12, 1], [12, 5], [4, 5]], shade(pal.helm.main, 14));
+  ellipse(ctx, 12, 2.6, 1.8, 1.6, shade(pal.helm.trim, -15));
 
   const glow = 0.6 + Math.sin(time * 4) * 0.25;
   ctx.save();
-  ctx.shadowColor = "#d8e8c8";
-  ctx.shadowBlur = 12 * glow;
-  ellipse(ctx, 6, -1.5, 2.8, 2.2, "#e8f0c0");
-  ellipse(ctx, -2, -2, 2.2, 1.8, "#c8e0a8");
+  ctx.shadowColor = "#e8d090";
+  ctx.shadowBlur = 10 * glow;
+  ellipse(ctx, 4.5, -1.2, 2.1, 1.7, "#f0e2a8");
+  ellipse(ctx, -1.5, -1.6, 1.7, 1.4, "#e8d898");
+  ctx.restore();
   ctx.restore();
 
-  ctx.strokeStyle = pal.helm.trim;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(0.5, 0, 9.6, Math.PI * 1.05, Math.PI * 1.95);
-  ctx.stroke();
-  ctx.restore();
-
-  // ── Front leg ────────────────────────────────────────────────────────────
-  limb(ctx, 3, hipY, 4 + legSwing * 0.7, -12 - kneeLift * 0.4, 9, pal.legs.main);
-  limb(ctx, 4 + legSwing * 0.7, -12 - kneeLift * 0.4, 5 + legSwing, -1, 8, pal.legs.main);
-  ellipse(ctx, 5 + legSwing, -1.5, 6.5, 3.2, pal.legs.trim);
-
-  ctx.save();
-  ctx.translate(12, shoulderY + 1);
-  ellipse(ctx, 0, 0, 8.5, 7, shade(pal.chest.main, 28));
-  ctx.restore();
-
-  // ── Weapon arm: bent elbow, fist on the grip, blade up-forward ───────────
-  const pose = weaponArmPose(state, t, attackProgress, player.attackCombo);
-  const sleeve = "#8b6a4e";
-  const gauntlet = "#d2c4a4";
-
-  ctx.save();
-  ctx.translate(14, shoulderY + 2);
-  ctx.rotate(-pose.upper);
-  limb(ctx, 0, 0, 0, 10, 7.2, sleeve);
-  ellipse(ctx, 0, 10, 3.4, 3.2, shade(sleeve, -25));
-  ctx.translate(0, 10);
-  ctx.rotate(-pose.elbow);
-  limb(ctx, 0, 0, 0, 13, 6.2, shade(sleeve, 15));
-  ctx.translate(0, 13);
-  ctx.rotate(pose.wrist);
-  drawWeapon(ctx, stats.weaponKind, pal.weapon, Math.sin(time * 3) * 0.5 + 0.5);
-  drawGauntlet(ctx, gauntlet);
-  ctx.restore();
+  // Forward sword arm — blade stands upright in the visible hand
+  drawArm(ctx, 9, shoulderY + 3, swordPose.upper, swordPose.elbow, sleeve, shade(sleeve, 10), (c) => {
+    c.save();
+    c.rotate(swordPose.wrist);
+    drawWeapon(c, stats.weaponKind, pal.weapon, Math.sin(time * 3) * 0.5 + 0.5, stats.weaponId);
+    c.restore();
+    drawGauntlet(c, gauntlet);
+  });
 
   ctx.restore();
 
