@@ -66,9 +66,9 @@ body {
 /* ── Touch controls ────────────────────────────────────────────────────── */
 
 .touch-dock {
-  --touch-dir: clamp(72px, 22vh, 104px);
-  --touch-jump-w: clamp(108px, 32vh, 148px);
-  --touch-gap: 10px;
+  --touch-dir: clamp(56px, 17.5vw, 74px);
+  --touch-jump-w: clamp(72px, 22vw, 96px);
+  --touch-gap: 8px;
   display: none;
   position: absolute;
   left: 0;
@@ -76,10 +76,10 @@ body {
   bottom: 0;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
   max-width: 100%;
-  padding: 8px max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  padding: 6px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
   background: linear-gradient(180deg, transparent, rgba(5, 3, 8, 0.62) 42%);
   z-index: 3;
   pointer-events: none;
@@ -90,7 +90,8 @@ body {
   display: flex;
   gap: var(--touch-gap);
   pointer-events: auto;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .touch--left {
@@ -154,13 +155,13 @@ body {
 .tbtn--md {
   width: var(--touch-dir);
   height: var(--touch-dir);
-  font-size: clamp(20px, 6vh, 28px);
+  font-size: clamp(16px, 4.6vw, 22px);
 }
 
 .tbtn--sm {
-  width: clamp(38px, 11vh, 46px);
-  height: clamp(38px, 11vh, 46px);
-  font-size: 15px;
+  width: clamp(32px, 9vw, 40px);
+  height: clamp(32px, 9vw, 40px);
+  font-size: 14px;
 }
 
 .tbtn--sm[hidden] {
@@ -170,8 +171,8 @@ body {
 .tbtn--lg {
   width: var(--touch-jump-w);
   min-height: calc(var(--touch-dir) * 2 + var(--touch-gap));
-  border-radius: 26px;
-  font-size: clamp(22px, 7vh, 32px);
+  border-radius: 20px;
+  font-size: clamp(18px, 5.2vw, 24px);
   align-self: stretch;
 }
 
@@ -198,13 +199,11 @@ body.has-touch .touch-dock {
   display: flex;
 }
 
-@media (max-height: 380px) {
+@media (max-width: 400px) {
   .touch-dock {
-    --touch-dir: clamp(60px, 24vh, 84px);
-    --touch-jump-w: clamp(88px, 34vh, 120px);
-    --touch-gap: 8px;
-    padding-top: 4px;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    --touch-dir: clamp(52px, 16vw, 64px);
+    --touch-jump-w: clamp(68px, 20vw, 84px);
+    --touch-gap: 6px;
   }
 }
 
