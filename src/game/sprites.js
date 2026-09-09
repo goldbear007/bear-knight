@@ -4,7 +4,7 @@ const DEFAULTS = {
   helm: { main: "#c9bda4", trim: "#6d5c44" },
   chest: { main: "#6b5540", trim: "#3a2b1e", fur: "#4a3a2b" },
   legs: { main: "#544539", trim: "#33291f" },
-  cloak: null,
+  cloak: { main: "#16382f", trim: "#0c221c" },
   weapon: { blade: "#8a8f99", grip: "#4a3527", glow: null },
 };
 
@@ -216,6 +216,34 @@ export function drawKnight(ctx, player, stats, time) {
 
   // skull
   ellipse(ctx, 0.5, 0, 10, 9.5, pal.helm.main);
+
+  if (pal.cloak) {
+    poly(
+      ctx,
+      [
+        [-14, 3],
+        [-13, -8],
+        [-6, -17],
+        [3, -18],
+        [12, -9],
+        [12, 5],
+        [6, -1],
+        [-8, 0],
+      ],
+      pal.cloak.main
+    );
+    poly(
+      ctx,
+      [
+        [-7, -1],
+        [6, -2],
+        [8, 7],
+        [-5, 8],
+      ],
+      shade(pal.cloak.main, -32)
+    );
+  }
+
   // muzzle
   poly(
     ctx,
@@ -237,10 +265,10 @@ export function drawKnight(ctx, player, stats, time) {
   // glowing eye socket
   const glow = 0.6 + Math.sin(time * 4) * 0.25;
   ctx.save();
-  ctx.shadowColor = "#ff9a3d";
+  ctx.shadowColor = "#d8e8c8";
   ctx.shadowBlur = 12 * glow;
-  ellipse(ctx, 6, -1.5, 2.8, 2.2, "#ffb14d");
-  ellipse(ctx, -2, -2, 2.2, 1.8, "#ff8a2d");
+  ellipse(ctx, 6, -1.5, 2.8, 2.2, "#e8f0c0");
+  ellipse(ctx, -2, -2, 2.2, 1.8, "#c8e0a8");
   ctx.restore();
 
   // helm trim
@@ -437,7 +465,7 @@ export function drawEnemy(ctx, e, time) {
       const float = Math.sin(t * 2.4) * 3;
       ctx.translate(0, float);
       poly(ctx, [[-14, -2], [14, -2], [10, -40], [-10, -40]], c.cloth);
-      poly(ctx, [[-11, -38], [0, -56], [11, -38], [0, -34]], c.body);
+      poly(ctx, [[-11, -38], [0, -74], [11, -38], [0, -34]], c.body);
       ctx.save();
       ctx.shadowColor = c.eye;
       ctx.shadowBlur = 12;

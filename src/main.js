@@ -4,6 +4,7 @@ import { Telegram } from "./core/telegram.js";
 import { SaveStore } from "./core/save.js";
 import { Game } from "./game/game.js";
 import { UI } from "./ui/ui.js";
+import { loadArt } from "./game/art.js";
 
 async function boot() {
   Telegram.init();
@@ -15,9 +16,23 @@ async function boot() {
   const overlay = document.getElementById("overlay");
   const banner = document.getElementById("banner");
 
-  if (navigator.maxTouchPoints > 0 || "ontouchstart" in window) {
-    document.body.classList.add("has-touch");
+  const enableTouchUi = () => document.body.classList.add("has-touch");
+  if (
+    navigator.maxTouchPoints > 0 ||
+    "ontouchstart" in window ||
+    window.matchMedia?.("(pointer: coarse)")?.matches
+  ) {
+    enableTouchUi();
   }
+  window.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (e.pointerType === "touch") enableTouchUi();
+    },
+    { passive: true }
+  );
+
+  await loadArt();
 
   const input = new Input();
   const ui = new UI(overlay, banner);

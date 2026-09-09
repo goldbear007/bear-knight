@@ -10,6 +10,14 @@ const LEVEL_HEIGHT = 22;
 const BASE_GROUND = 15;
 const ARENA_TILES = 30;
 
+const DECOR_BY_BIOME = {
+  0: ["tree", "tree", "tree", "pillar", "stone"],
+  1: ["pillar", "house", "tree", "grave", "lamp"],
+  2: ["arch", "pillar", "grave", "stone", "arch"],
+  3: ["stone", "stone", "pillar", "grave"],
+  4: ["arch", "pillar", "spire", "pillar", "tree"],
+};
+
 export class World {
   constructor(levelCfg) {
     this.cfg = levelCfg;
@@ -181,14 +189,15 @@ export class World {
       ? { type: cfg.boss, x: (this.w - 12) * TILE, y: (BASE_GROUND - 4) * TILE }
       : null;
 
-    // Background decoration seeds (trees, pillars, ruins) resolved by the renderer.
+    // Background decoration seeds resolved by the renderer.
+    const kinds = DECOR_BY_BIOME[cfg.id] || DECOR_BY_BIOME[0];
     for (let tx = 0; tx < this.w; tx += 2) {
       if (groundLine[tx] < 0) continue;
       if (!rng.chance(0.35)) continue;
       this.decor.push({
         x: tx * TILE + rng.range(-8, 8),
         y: groundLine[tx] * TILE,
-        kind: rng.pick(["tree", "tree", "stone", "pillar", "grave"]),
+        kind: rng.pick(kinds),
         scale: rng.range(0.7, 1.5),
         layer: rng.chance(0.5) ? 0 : 1,
         seed: rng.int(0, 9999),

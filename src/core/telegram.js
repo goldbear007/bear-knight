@@ -1,3 +1,21 @@
+function lockViewportHeight() {
+  const vv = window.visualViewport;
+  const h = Math.round(vv?.height || window.innerHeight);
+  if (h > 0) document.documentElement.style.setProperty("--vvh", `${h}px`);
+}
+
+function applyTelegramViewport() {
+  const h = Math.round(tg?.viewportStableHeight || tg?.viewportHeight || 0);
+  if (h > 0) document.documentElement.style.setProperty("--vvh", `${h}px`);
+}
+
+if (typeof window !== "undefined") {
+  lockViewportHeight();
+  window.addEventListener("resize", lockViewportHeight);
+  window.visualViewport?.addEventListener("resize", lockViewportHeight);
+  window.visualViewport?.addEventListener("scroll", lockViewportHeight);
+}
+
 const webApp = typeof window !== "undefined" ? window.Telegram?.WebApp : null;
 // The SDK script also loads in a normal browser, where `platform` stays "unknown".
 const inTelegram = Boolean(webApp && webApp.platform && webApp.platform !== "unknown");
@@ -8,6 +26,7 @@ export const Telegram = {
   raw: tg,
 
   init() {
+    lockViewportHeight();
     if (!tg) return;
     try {
       tg.ready();
@@ -16,6 +35,8 @@ export const Telegram = {
       tg.setBackgroundColor?.("#0b0710");
       tg.disableVerticalSwipes?.();
       document.body.classList.add("in-telegram");
+      applyTelegramViewport();
+      tg.onEvent?.("viewportChanged", applyTelegramViewport);
     } catch {
       /* older Telegram clients simply lack some of these methods */
     }

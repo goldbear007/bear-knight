@@ -1,5 +1,6 @@
 import { TILE, SOLID, PLATFORM, SPIKE } from "./world.js";
 import { drawKnight, drawSwingArc, drawEnemy } from "./sprites.js";
+import { Art, drawSkyCover, drawTiledLayer, drawProp, tilePattern } from "./art.js";
 import { clamp, makeRng, roundRect, formatNum, shade } from "../core/utils.js";
 
 const starCache = new Map();
@@ -37,64 +38,86 @@ function ridge(ctx, camX, parallax, baseY, amp, step, color, seed, W, H) {
 
 export function drawBackground(ctx, world, camera, time, W, H) {
   const p = world.cfg.palette;
-  const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, p.sky[0]);
-  sky.addColorStop(0.55, p.sky[1]);
-  sky.addColorStop(1, p.sky[2]);
-  ctx.fillStyle = sky;
+  const biome = world.cfg.id;
+  const outdoor = biome !== 2;
+  ctx.fillStyle = p.sky[0];
   ctx.fillRect(0, 0, W, H);
+  const paintedSky = outdoor && drawSkyCover(ctx, Art.sky, camera.x, W, H);
 
-  // Stars
+  if (!paintedSky) {
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, p.sky[0]);
+    sky.addColorStop(0.55, p.sky[1]);
+    sky.addColorStop(1, p.sky[2]);
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  const starCount = paintedSky ? 24 : 140;
   ctx.save();
-  for (const s of stars(world.cfg.seed, 90, W, H)) {
+  for (const s of stars(world.cfg.seed, starCount, W, H)) {
     const twinkle = 0.35 + Math.abs(Math.sin(time * 1.6 + s.tw)) * 0.65;
-    ctx.globalAlpha = twinkle * 0.7;
+    ctx.globalAlpha = twinkle * (paintedSky ? 0.35 : 0.75);
     ctx.fillStyle = "#dfe6ff";
     ctx.fillRect(s.x - camera.x * 0.02, s.y, s.r, s.r);
   }
   ctx.restore();
 
-  // Moon
-  const moonX = W * 0.78 - camera.x * 0.03;
-  const moonY = H * 0.2;
-  ctx.save();
-  ctx.globalAlpha = 0.16;
-  ctx.fillStyle = p.moon;
-  ctx.beginPath();
-  ctx.arc(moonX, moonY, 74, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.beginPath();
-  ctx.arc(moonX, moonY, 34, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 0.5;
-  ctx.fillStyle = shade(p.sky[1], 6);
-  ctx.beginPath();
-  ctx.arc(moonX - 13, moonY - 8, 28, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  if (!paintedSky) {
+    const moonX = W * 0.78 - camera.x * 0.03;
+    const moonY = H * 0.18;
+    ctx.save();
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = p.moon;
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, 90, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, 42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = shade(p.sky[1], 8);
+    ctx.beginPath();
+    ctx.arc(moonX - 14, moonY - 10, 32, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
-  ridge(ctx, camera.x, 0.08, H * 0.72, 120, 46, p.far, world.cfg.seed + 11, W, H);
-  ridge(ctx, camera.x, 0.18, H * 0.86, 90, 34, p.mid, world.cfg.seed + 22, W, H);
-  ridge(ctx, camera.x, 0.32, H * 1.0, 70, 26, p.near, world.cfg.seed + 33, W, H);
+  if (outdoor && Art.far) {
+    const farAlpha = biome === 3 ? 0.72 : 0.94;
+    drawTiledLayer(ctx, Art.far, camera.x, 0.07, W, H, { heightRatio: 0.94, alpha: farAlpha });
+  } else {
+    ridge(ctx, camera.x, 0.08, H * 0.72, 120, 46, p.far, world.cfg.seed + 11, W, H);
+    ridge(ctx, camera.x, 0.18, H * 0.86, 90, 34, p.mid, world.cfg.seed + 22, W, H);
+  }
+
+  if (outdoor && Art.mid && biome !== 3) {
+    const midAlpha = biome === 1 ? 0.7 : biome === 4 ? 0.5 : 0.88;
+    drawTiledLayer(ctx, Art.mid, camera.x, 0.2, W, H, { heightRatio: 0.38, alpha: midAlpha });
+  }
+
+  ridge(ctx, camera.x, 0.32, H * 1.02, 56, 26, p.near, world.cfg.seed + 33, W, H);
 
   ctx.fillStyle = p.fog;
   ctx.fillRect(0, H * 0.55, W, H * 0.45);
 }
 
-/** Ambient motes: ash, spores or embers depending on the biome accent colour. */
+/** Ambient motes: moonlight dust, ash or embers depending on the biome. */
 export function drawWeather(ctx, world, camera, time, W, H) {
   const rng = makeRng(world.cfg.seed + 99);
+  const p = world.cfg.palette;
+  const warm = world.cfg.id === 1 || world.cfg.id === 4;
   ctx.save();
-  ctx.fillStyle = world.cfg.palette.accent;
-  for (let i = 0; i < 60; i++) {
+  ctx.fillStyle = warm ? p.accent : p.moonRim || p.moon;
+  for (let i = 0; i < 70; i++) {
     const seedX = rng() * 2000;
-    const speed = 12 + rng() * 26;
-    const drift = rng() * 60;
+    const speed = 8 + rng() * 18;
+    const drift = rng() * 80;
     const size = 1 + rng() * 2;
-    const x = ((seedX - camera.x * 0.35 + Math.sin(time * 0.5 + i) * drift) % (W + 60) + W + 60) % (W + 60) - 30;
+    const x = ((seedX - camera.x * 0.35 + Math.sin(time * 0.35 + i) * drift) % (W + 60) + W + 60) % (W + 60) - 30;
     const y = ((rng() * H + time * speed) % (H + 40)) - 20;
-    ctx.globalAlpha = 0.12 + (i % 5) * 0.03;
+    ctx.globalAlpha = 0.1 + (i % 5) * 0.03;
     ctx.fillRect(x, y, size, size);
   }
   ctx.restore();
@@ -102,10 +125,25 @@ export function drawWeather(ctx, world, camera, time, W, H) {
 
 function drawDecorItem(ctx, d, palette) {
   const rng = makeRng(d.seed);
+  const far = d.layer === 0;
+  const dark = far ? -45 : -20;
+  const flip = d.seed % 2 === 0;
+  const alpha = far ? 0.72 : 1;
+
+  if (d.kind === "tree") {
+    const h = (far ? 118 : 86) * d.scale;
+    if (drawProp(ctx, Art.tree, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "pillar" || d.kind === "spire") {
+    const h = (d.kind === "spire" ? 132 : 96) * d.scale * (far ? 1.1 : 1);
+    if (drawProp(ctx, Art.pillar, d.x, d.y, h, { flip, alpha })) return;
+  } else if (d.kind === "arch") {
+    const h = (far ? 120 : 96) * d.scale;
+    if (drawProp(ctx, Art.arch, d.x, d.y, h, { flip, alpha })) return;
+  }
+
   ctx.save();
   ctx.translate(d.x, d.y);
   ctx.scale(d.scale, d.scale);
-  const dark = d.layer === 0 ? -45 : -20;
 
   if (d.kind === "tree") {
     ctx.strokeStyle = shade(palette.ground, dark);
@@ -124,13 +162,54 @@ function drawDecorItem(ctx, d, palette) {
       ctx.quadraticCurveTo(dir * 18, y - 8, dir * 30, y - 24 - rng() * 10);
       ctx.stroke();
     }
-  } else if (d.kind === "pillar") {
+  } else if (d.kind === "pillar" || d.kind === "spire") {
+    const h = d.kind === "spire" ? 118 : 84;
     ctx.fillStyle = shade(palette.ground, dark + 12);
-    ctx.fillRect(-11, -84, 22, 84);
+    ctx.fillRect(-11, -h, 22, h);
     ctx.fillStyle = shade(palette.ground, dark - 8);
-    for (let i = 0; i < 5; i++) ctx.fillRect(-11, -80 + i * 17, 22, 3);
+    for (let i = 0; i < 5; i++) ctx.fillRect(-11, -h + 4 + i * 17, 22, 3);
     ctx.fillStyle = shade(palette.ground, dark + 20);
-    ctx.fillRect(-15, -90, 30, 8);
+    ctx.fillRect(-15, -h - 6, 30, 8);
+    if (d.kind === "spire") {
+      ctx.beginPath();
+      ctx.moveTo(-9, -h - 6);
+      ctx.lineTo(0, -h - 36);
+      ctx.lineTo(9, -h - 6);
+      ctx.fill();
+    }
+  } else if (d.kind === "arch") {
+    ctx.fillStyle = shade(palette.ground, dark + 14);
+    ctx.fillRect(-22, -78, 12, 78);
+    ctx.fillRect(10, -78, 12, 78);
+    ctx.fillRect(-22, -88, 44, 12);
+    ctx.fillStyle = shade(palette.ground, dark - 10);
+    ctx.beginPath();
+    ctx.moveTo(-10, -76);
+    ctx.quadraticCurveTo(0, -104, 10, -76);
+    ctx.lineTo(10, -68);
+    ctx.quadraticCurveTo(0, -90, -10, -68);
+    ctx.fill();
+  } else if (d.kind === "house") {
+    ctx.fillStyle = shade(palette.ground, dark + 8);
+    ctx.fillRect(-18, -36, 36, 36);
+    ctx.beginPath();
+    ctx.moveTo(-22, -36);
+    ctx.lineTo(0, -58);
+    ctx.lineTo(22, -36);
+    ctx.fill();
+    ctx.fillStyle = "#e0a45a";
+    ctx.globalAlpha = 0.7 + Math.sin(d.seed) * 0.15;
+    ctx.fillRect(-10, -24, 7, 8);
+    ctx.fillRect(4, -22, 6, 7);
+    ctx.globalAlpha = 1;
+  } else if (d.kind === "lamp") {
+    ctx.fillStyle = shade(palette.ground, dark + 10);
+    ctx.fillRect(-2, -28, 4, 28);
+    ctx.fillStyle = "#ffcf6b";
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.arc(0, -32, 5, 0, Math.PI * 2);
+    ctx.fill();
   } else if (d.kind === "grave") {
     ctx.fillStyle = shade(palette.ground, dark + 16);
     roundRect(ctx, -10, -30, 20, 30, 9);
@@ -157,7 +236,7 @@ export function drawWorld(ctx, world, camera, time, W, H) {
   // Far decor behind the terrain
   for (const d of world.decor) {
     if (d.layer !== 0) continue;
-    if (d.x < camera.ox - 120 || d.x > camera.ox + W + 120) continue;
+    if (d.x < camera.ox - 220 || d.x > camera.ox + W + 220) continue;
     drawDecorItem(ctx, d, p);
   }
 
@@ -170,33 +249,56 @@ export function drawWorld(ctx, world, camera, time, W, H) {
 
       if (tile === SOLID) {
         const isTop = world.get(tx, ty - 1) !== SOLID;
-        ctx.fillStyle = p.ground;
-        ctx.fillRect(px, py, TILE, TILE);
+        const stone = tilePattern(ctx, Art.stone, 96, p.ground);
+        if (stone) {
+          ctx.fillStyle = stone;
+          ctx.fillRect(px, py, TILE, TILE);
+        } else {
+          ctx.fillStyle = p.ground;
+          ctx.fillRect(px, py, TILE, TILE);
+        }
         if (isTop) {
-          ctx.fillStyle = p.groundTop;
-          ctx.fillRect(px, py, TILE, 7);
-          ctx.fillStyle = shade(p.groundTop, -25);
-          ctx.fillRect(px, py + 7, TILE, 3);
-          // tufts / rubble on the surface
+          const cap = tilePattern(ctx, Art.groundTop, 14, p.groundTop);
+          if (cap) {
+            ctx.fillStyle = cap;
+            ctx.fillRect(px, py, TILE, 14);
+          } else {
+            ctx.fillStyle = p.groundTop;
+            ctx.fillRect(px, py, TILE, 7);
+            ctx.fillStyle = shade(p.groundTop, -25);
+            ctx.fillRect(px, py + 7, TILE, 3);
+          }
+          ctx.fillStyle = p.moonRim || shade(p.moon, -20);
+          ctx.globalAlpha = 0.32;
+          ctx.fillRect(px, py, TILE, 2);
+          ctx.globalAlpha = 1;
           ctx.fillStyle = p.accent;
           const h = ((tx * 37) % 5) + 2;
-          ctx.globalAlpha = 0.5;
+          ctx.globalAlpha = 0.35;
           ctx.fillRect(px + ((tx * 13) % 22), py - h, 2, h);
           ctx.globalAlpha = 1;
         } else {
-          ctx.fillStyle = shade(p.ground, -12);
-          ctx.fillRect(px + ((tx * 7) % 12), py + ((ty * 11) % 14), 5, 4);
+          ctx.fillStyle = "rgba(0,0,0,0.18)";
+          ctx.fillRect(px, py, TILE, TILE);
         }
-        ctx.strokeStyle = "rgba(0,0,0,0.22)";
-        ctx.lineWidth = 1;
-        ctx.strokeRect(px + 0.5, py + 0.5, TILE - 1, TILE - 1);
       } else if (tile === PLATFORM) {
-        ctx.fillStyle = shade(p.groundTop, -8);
-        ctx.fillRect(px, py, TILE, 9);
-        ctx.fillStyle = shade(p.ground, -18);
-        ctx.fillRect(px, py + 9, TILE, 4);
-        ctx.fillStyle = shade(p.groundTop, 22);
+        const slabH = 18;
+        ctx.fillStyle = "rgba(0,0,0,0.35)";
+        ctx.fillRect(px + 1, py + slabH - 1, TILE - 2, 4);
+        const slab = tilePattern(ctx, Art.platform, slabH, p.groundTop);
+        if (slab) {
+          ctx.fillStyle = slab;
+          ctx.fillRect(px, py, TILE, slabH);
+        } else {
+          ctx.fillStyle = shade(p.groundTop, -8);
+          ctx.fillRect(px, py, TILE, 9);
+          ctx.fillStyle = shade(p.ground, -18);
+          ctx.fillRect(px, py + 9, TILE, 4);
+        }
+        ctx.fillStyle = p.moonRim || shade(p.groundTop, 22);
+        ctx.globalAlpha = 0.4;
         ctx.fillRect(px, py, TILE, 2);
+        ctx.globalAlpha = 1;
       } else if (tile === SPIKE) {
         ctx.fillStyle = "#cdd3dd";
         for (let i = 0; i < 4; i++) {
@@ -217,7 +319,7 @@ export function drawWorld(ctx, world, camera, time, W, H) {
   // Near decor in front of the terrain line
   for (const d of world.decor) {
     if (d.layer !== 1) continue;
-    if (d.x < camera.ox - 120 || d.x > camera.ox + W + 120) continue;
+    if (d.x < camera.ox - 220 || d.x > camera.ox + W + 220) continue;
     drawDecorItem(ctx, d, p);
   }
 }
@@ -507,7 +609,7 @@ export function drawEntities(ctx, game, time) {
   drawFloaters(ctx, game.floaters);
 }
 
-/** Dark vignette + torchlight around the knight, drawn in screen space. */
+/** Moonlight vignette + a thin warm fill only near the knight. */
 export function drawLighting(ctx, game, W, H) {
   const p = game.player;
   const cx = p.x + p.w / 2 - game.camera.ox;
@@ -515,18 +617,23 @@ export function drawLighting(ctx, game, W, H) {
 
   ctx.save();
   ctx.globalCompositeOperation = "multiply";
-  const g = ctx.createRadialGradient(cx, cy, 60, cx, cy, 620);
+  const g = ctx.createRadialGradient(cx, cy, 70, cx, cy, 640);
   g.addColorStop(0, "rgba(255,255,255,1)");
-  g.addColorStop(0.55, "rgba(208,200,218,1)");
-  g.addColorStop(1, "rgba(108,98,128,1)");
+  g.addColorStop(0.5, "rgba(196, 210, 224, 1)");
+  g.addColorStop(1, "rgba(78, 92, 118, 1)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  const warm = ctx.createRadialGradient(cx, cy, 10, cx, cy, 170);
-  warm.addColorStop(0, "rgba(255,170,90,0.16)");
+  const moon = ctx.createRadialGradient(W * 0.74, H * 0.16, 20, W * 0.74, H * 0.16, 420);
+  moon.addColorStop(0, "rgba(200, 234, 216, 0.14)");
+  moon.addColorStop(1, "rgba(200, 234, 216, 0)");
+  ctx.fillStyle = moon;
+  ctx.fillRect(0, 0, W, H);
+  const warm = ctx.createRadialGradient(cx, cy, 8, cx, cy, 130);
+  warm.addColorStop(0, "rgba(255,170,90,0.07)");
   warm.addColorStop(1, "rgba(255,140,40,0)");
   ctx.fillStyle = warm;
   ctx.fillRect(0, 0, W, H);
@@ -618,24 +725,26 @@ export function drawHud(ctx, game, W, H) {
   ctx.fillStyle = game.level.palette.accent;
   ctx.fillRect(W / 2 - 90, 32, 180 * (progress / 100), 3);
 
-  // Abilities
-  const size = 38;
-  const baseY = H - size - 26;
-  let ax = 16;
-  if (s.canDash) {
-    abilityIcon(ctx, ax, baseY, size, "»", "SHIFT", p.dashCharges > 0, p.dashCooldown / (0.85 * s.cooldownMult), "#8fd8ff");
-    ax += size + 10;
+  // Abilities (on-screen buttons already show these on a phone)
+  if (!document.body.classList.contains("has-touch")) {
+    const size = 38;
+    const baseY = H - size - 26;
+    let ax = 16;
+    if (s.canDash) {
+      abilityIcon(ctx, ax, baseY, size, "»", "SHIFT", p.dashCharges > 0, p.dashCooldown / (0.85 * s.cooldownMult), "#8fd8ff");
+      ax += size + 10;
+    }
+    if (s.hasRoar) {
+      abilityIcon(ctx, ax, baseY, size, "☗", "Q", p.cooldowns.roar === 0, p.cooldowns.roar / (8 * s.cooldownMult), "#ffb066");
+      ax += size + 10;
+    }
+    if (s.hasBolt) {
+      abilityIcon(ctx, ax, baseY, size, "✷", "E", p.cooldowns.bolt === 0, p.cooldowns.bolt / (2.6 * s.cooldownMult), "#b06bff");
+      ax += size + 10;
+    }
+    const potionCount = game.potionCount();
+    abilityIcon(ctx, ax, baseY, size, `${potionCount}`, "R", potionCount > 0, 0, "#ff7a7a");
   }
-  if (s.hasRoar) {
-    abilityIcon(ctx, ax, baseY, size, "☗", "Q", p.cooldowns.roar === 0, p.cooldowns.roar / (8 * s.cooldownMult), "#ffb066");
-    ax += size + 10;
-  }
-  if (s.hasBolt) {
-    abilityIcon(ctx, ax, baseY, size, "✷", "E", p.cooldowns.bolt === 0, p.cooldowns.bolt / (2.6 * s.cooldownMult), "#b06bff");
-    ax += size + 10;
-  }
-  const potionCount = game.potionCount();
-  abilityIcon(ctx, ax, baseY, size, `${potionCount}`, "R", potionCount > 0, 0, "#ff7a7a");
 
   // Boss bar
   const boss = game.enemies.find((e) => e.isBoss && !e.dead && e.aggro);

@@ -55,6 +55,7 @@ export class Game {
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
+    window.visualViewport?.addEventListener("resize", () => this.resize());
     document.addEventListener("visibilitychange", () => {
       if (document.hidden && this.state === "playing") this.pause();
     });
@@ -96,6 +97,16 @@ export class Game {
   refreshStats() {
     this.stats = computeStats(this.save);
     if (this.player) this.player.refreshStats(this.stats);
+    this.syncTouchButtons();
+  }
+
+  /** Hide skill buttons the knight has not unlocked so the pad fits a phone. */
+  syncTouchButtons() {
+    const stats = this.stats || {};
+    for (const el of document.querySelectorAll("[data-unlock]")) {
+      const key = el.dataset.unlock;
+      el.hidden = !stats[key];
+    }
   }
 
   // ── Level lifecycle ───────────────────────────────────────────────────────
@@ -143,6 +154,7 @@ export class Game {
     this.save.stats.runs += 1;
 
     this.camera.follow(this.player, this.world, 1, true);
+    this.syncTouchButtons();
     this.state = "playing";
     this.input.enabled = true;
     this.input.clear();

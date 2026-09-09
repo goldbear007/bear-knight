@@ -11,7 +11,7 @@ export const ENEMY_TYPES = {
     gold: [8, 16], souls: [1, 2],
     ai: "walker",
     attackRange: 40, attackCooldown: 1.1, aggroRange: 320,
-    colors: { body: "#5b6b52", dark: "#33402f", eye: "#c8ff6b", cloth: "#3f3a33" },
+    colors: { body: "#4a5a48", dark: "#2a3428", eye: "#c8ffb0", cloth: "#2a3228" },
   },
   skeleton: {
     id: "skeleton",
@@ -42,7 +42,7 @@ export const ENEMY_TYPES = {
     ai: "shooter",
     attackRange: 460, attackCooldown: 1.9, aggroRange: 520,
     projectile: { speed: 340, kind: "arrow", gravity: 120 },
-    colors: { body: "#3f4a5c", dark: "#232a36", eye: "#ffd45f", cloth: "#2c3444" },
+    colors: { body: "#3a4254", dark: "#1e2430", eye: "#d8e8ff", cloth: "#1c2838" },
   },
   warlock: {
     id: "warlock",
@@ -53,7 +53,7 @@ export const ENEMY_TYPES = {
     ai: "shooter",
     attackRange: 420, attackCooldown: 2.3, aggroRange: 520,
     projectile: { speed: 210, kind: "orb", homing: 1.6 },
-    colors: { body: "#4a3560", dark: "#261a33", eye: "#b06bff", cloth: "#33224a" },
+    colors: { body: "#2e2438", dark: "#16101c", eye: "#b08cff", cloth: "#1a2830" },
   },
   brute: {
     id: "brute",
