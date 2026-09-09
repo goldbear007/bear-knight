@@ -31,12 +31,35 @@ const PATHS = {
   skull: "M12 3a8 8 0 0 1 8 8v4l-3 2v3h-4v-3h-2v3H7v-3l-3-2v-4a8 8 0 0 1 8-8z",
 };
 
+let iconSeq = 0;
+
+/** Cast-iron seal with a gold/silver glyph — Baldur's Gate medallion language. */
 export function icon(name, size = 22, color = "currentColor") {
   const d = PATHS[name] || PATHS.orb;
   const stroked = ["roar", "nova", "wind", "dash", "ward"].includes(name);
-  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">
-    <path d="${d}" ${stroked ? `fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round"` : `fill="${color}"`} />
+  const uid = `ic${iconSeq++}`;
+  const glyph = stroked
+    ? `fill="none" stroke="${color}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"`
+    : `fill="${color}"`;
+  return `<svg class="ui-seal" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">
+    <defs>
+      <radialGradient id="${uid}m" cx="32%" cy="26%">
+        <stop offset="0%" stop-color="#6d6558"/>
+        <stop offset="52%" stop-color="#2c281f"/>
+        <stop offset="100%" stop-color="#0e0c09"/>
+      </radialGradient>
+    </defs>
+    <circle cx="12" cy="12" r="11.4" fill="url(#${uid}m)" stroke="#c9b17a" stroke-width="1.1"/>
+    <circle cx="12" cy="12" r="9.2" fill="none" stroke="rgba(0,0,0,0.55)" stroke-width="0.75"/>
+    <circle cx="8.2" cy="7.4" r="3.2" fill="rgba(255,236,190,0.12)"/>
+    <g transform="translate(12 12) scale(0.56) translate(-12 -12)">
+      <path d="${d}" ${glyph}/>
+    </g>
   </svg>`;
+}
+
+export function hubSeal(id, size = 28) {
+  return `<img class="hub-seal" src="assets/art/moonwatch/icon-${id}.png?v=1" alt="" width="${size}" height="${size}">`;
 }
 
 export const SLOT_ICON = {

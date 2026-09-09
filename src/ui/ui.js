@@ -2,13 +2,26 @@ import { ITEMS, POTIONS, RARITY, SLOT_NAMES, STAT_LABELS, getItem, sellValue, fo
 import { SKILLS, BRANCHES, SKILL_BY_ID, rankCost, meetsRequirements } from "../data/skills.js";
 import { LEVELS } from "../data/levels.js";
 import { computeStats, equippedItem, heroLevel, spentSouls } from "../game/stats.js";
-import { icon, SLOT_ICON, WEAPON_ICON } from "./icons.js";
+import { Art } from "../game/art.js";
+import { icon, hubSeal, SLOT_ICON, WEAPON_ICON } from "./icons.js";
 import { Sfx } from "../core/audio.js";
 import { Telegram } from "../core/telegram.js";
 import { SaveStore, createDefaultSave } from "../core/save.js";
 import { formatNum } from "../core/utils.js";
 
 const SLOTS = ["weapon", "helm", "chest", "legs", "cloak"];
+
+function itemGlyph(item, size = 26) {
+  const color = RARITY[item?.rarity || "common"].color;
+  if (item?.slot === "weapon") {
+    const src = Art.weapons?.[item.id]?.src;
+    if (src) {
+      return `<img class="weapon-thumb" src="${src}" alt="" width="${size}" height="${size}">`;
+    }
+    return icon(WEAPON_ICON[item.kind] || "sword", size, color);
+  }
+  return icon(SLOT_ICON[item.slot], size, color);
+}
 
 export class UI {
   constructor(root, bannerEl) {
@@ -38,11 +51,35 @@ export class UI {
     document.body.classList.remove("menu-open");
   }
 
-  render(html, { wide = false } = {}) {
-    this.root.className = `overlay${wide ? " overlay--wide" : ""}`;
+  render(html, { wide = false, hub = false } = {}) {
+    this.root.className = `overlay${wide ? " overlay--wide" : ""}${hub ? " overlay--hub" : ""}`;
     this.root.innerHTML = html;
     this.root.scrollTop = 0;
     document.body.classList.add("menu-open");
+  }
+
+  renderStone(innerHtml) {
+    this.render(innerHtml, { wide: true, hub: true });
+  }
+
+  ledgerPage({ kicker, title, seal, inner }) {
+    return `
+      <div class="screen screen--ledger">
+        <section class="ledger">
+          <header class="ledger-head">
+            ${hubSeal(seal, 52)}
+            <div class="ledger-titles">
+              <p class="hub-kicker">${kicker}</p>
+              <h1 class="ledger-title">${title}</h1>
+            </div>
+            <div class="purse" data-purse>${this.purseHtml()}</div>
+          </header>
+          ${inner}
+          <footer class="ledger-foot">
+            <button type="button" class="hub-menu-btn" data-act="${this.backAction()}">Назад</button>
+          </footer>
+        </section>
+      </div>`;
   }
 
   showBanner(title, subtitle = "") {
@@ -121,28 +158,26 @@ export class UI {
     const save = this.save;
     const stats = computeStats(save);
     const lvl = heroLevel(save);
-    const cards = LEVELS.map((level) => {
+    const lands = LEVELS.map((level) => {
       const unlocked = save.unlockedLevels > level.id;
       const cleared = save.clearedLevels.includes(level.id);
       const skulls = "◆".repeat(Math.min(5, Math.round(level.difficulty * 1.4)));
       return `
-        <article class="level-card${unlocked ? "" : " locked"}${cleared ? " cleared" : ""}">
-          <div class="level-card__art" style="--a:${level.palette.accent};--b:${level.palette.sky[1]}"></div>
-          <div class="level-card__body">
-            <h3>${level.name}</h3>
-            <p>${level.subtitle}</p>
-            <div class="level-card__meta">
-              <span class="danger">${skulls}</span>
-              ${level.boss ? '<span class="tag tag--boss">Босс</span>' : ""}
-              ${cleared ? '<span class="tag tag--done">Пройден</span>' : ""}
-            </div>
-          </div>
-          ${
-            unlocked
-              ? `<button class="btn btn--primary" data-act="start" data-id="${level.id}">В поход</button>`
-              : `<button class="btn" disabled>Закрыто</button>`
-          }
-        </article>`;
+        <button
+          class="hub-menu-btn${unlocked ? "" : " is-locked"}${cleared ? " is-cleared" : ""}"
+          data-act="start"
+          data-id="${level.id}"
+          ${unlocked ? "" : "disabled"}
+          title="${level.subtitle}"
+        >
+          <span class="hub-menu-btn__name">${level.name}</span>
+          <span class="hub-menu-btn__meta">
+            <span class="danger">${skulls}</span>
+            ${level.boss ? '<em>Босс</em>' : ""}
+            ${cleared ? "<em>Пройден</em>" : ""}
+            ${unlocked ? "" : "<em>Закрыто</em>"}
+          </span>
+        </button>`;
     }).join("");
 
     const playtime = Math.floor((save.stats.playtimeMs || 0) / 60000);
@@ -150,47 +185,45 @@ export class UI {
     this.render(
       `
       <div class="screen screen--hub">
-        <header class="screen-head">
-          <div>
-            <p class="eyebrow">Лагерь у костра</p>
-            <h1>${Telegram.playerName}, рыцарь в медвежьем доспехе</h1>
-          </div>
-          <div class="purse" data-purse>${this.purseHtml()}</div>
-        </header>
-
-        ${reason ? `<div class="notice">${reason}</div>` : ""}
-
-        <section class="hero-strip">
-          <div class="hero-card">
-            <div class="hero-card__badge">${lvl}</div>
-            <div>
-              <strong>Уровень героя</strong>
-              <span>${formatNum(save.souls + spentSouls(save))} душ собрано</span>
+        <section class="hub-brand">
+          <p class="hub-kicker">Тьма Севера</p>
+          <h1 class="hub-title">Медвежий Рыцарь</h1>
+          <p class="hub-player">${Telegram.playerName}, рыцарь в медвежьем доспехе</p>
+          <img class="hub-crest" src="assets/art/moonwatch/menu-crest.png?v=1" alt="">
+          <div class="hub-hero">
+            <div class="hero-card">
+              <div class="hero-card__badge">${lvl}</div>
+              <div>
+                <strong>Уровень героя</strong>
+                <span>${formatNum(save.souls + spentSouls(save))} душ собрано</span>
+              </div>
             </div>
+            <div class="hero-stats">
+              <span>${icon("heart", 15, "#e05a5a")} ${stats.maxHp}</span>
+              <span>${icon("sword", 15, "#d9d3c2")} ${stats.damage}</span>
+              <span>${icon("shield", 15, "#8fb8ff")} ${stats.armor}</span>
+              <span>${icon("eye", 15, "#ffd45f")} ${stats.crit.toFixed(0)}%</span>
+            </div>
+            <div class="purse" data-purse>${this.purseHtml()}</div>
           </div>
-          <div class="hero-stats">
-            <span>${icon("heart", 15, "#e05a5a")} ${stats.maxHp}</span>
-            <span>${icon("sword", 15, "#d9d3c2")} ${stats.damage}</span>
-            <span>${icon("shield", 15, "#8fb8ff")} ${stats.armor}</span>
-            <span>${icon("eye", 15, "#ffd45f")} ${stats.crit.toFixed(0)}%</span>
-          </div>
-          <nav class="hub-nav">
-            <button class="btn" data-act="gear">${icon("chest", 16)} Снаряжение</button>
-            <button class="btn" data-act="shop">${icon("coin", 16)} Магазин</button>
-            <button class="btn" data-act="tree">${icon("nova", 16)} Умения</button>
-            <button class="btn btn--ghost" data-act="settings">Настройки</button>
-          </nav>
         </section>
 
-        <h2 class="section-title">Земли Севера</h2>
-        <div class="level-grid">${cards}</div>
-
-        <footer class="hub-foot">
-          Убито врагов: ${save.stats.kills} · Смертей: ${save.stats.deaths} · Боссов: ${save.stats.bossKills} ·
-          Трофеев: ${save.stats.lootFound || 0} · В игре: ${playtime} мин · Сохранение: ${SaveStore.backend}
-        </footer>
+        <aside class="hub-panel">
+          ${reason ? `<div class="notice">${reason}</div>` : ""}
+          <nav class="hub-lands">${lands}</nav>
+          <nav class="hub-tools">
+            <button class="hub-menu-btn hub-menu-btn--tool" data-act="gear">${hubSeal("gear")} Снаряжение</button>
+            <button class="hub-menu-btn hub-menu-btn--tool" data-act="shop">${hubSeal("shop")} Магазин</button>
+            <button class="hub-menu-btn hub-menu-btn--tool" data-act="tree">${hubSeal("skills")} Умения</button>
+            <button class="hub-menu-btn hub-menu-btn--tool" data-act="settings">${hubSeal("settings")} Настройки</button>
+          </nav>
+          <footer class="hub-foot">
+            Убито: ${save.stats.kills} · Смертей: ${save.stats.deaths} · Боссов: ${save.stats.bossKills} ·
+            Трофеев: ${save.stats.lootFound || 0} · ${playtime} мин · ${SaveStore.backend}
+          </footer>
+        </aside>
       </div>`,
-      { wide: true }
+      { wide: true, hub: true }
     );
   }
 
@@ -237,28 +270,22 @@ export class UI {
       body = `<div class="item-grid">${list.map((i) => this.itemCard({ itemId: i.id }, "buy")).join("")}</div>`;
     }
 
-    this.render(
-      `
-      <div class="screen">
-        <header class="screen-head">
-          <div>
-            <p class="eyebrow">Торговец с перекрёстка</p>
-            <h1>Лавка</h1>
+    this.renderStone(
+      this.ledgerPage({
+        kicker: "Торговец с перекрёстка",
+        title: "Магазин",
+        seal: "shop",
+        inner: `
+          <div class="tabs">
+            ${tabs
+              .map(
+                (t) =>
+                  `<button class="tab${this.shopTab === t.id ? " is-active" : ""}" data-act="shopTab" data-tab="${t.id}">${t.label}</button>`
+              )
+              .join("")}
           </div>
-          <div class="purse" data-purse>${this.purseHtml()}</div>
-        </header>
-        <div class="tabs">
-          ${tabs
-            .map(
-              (t) =>
-                `<button class="tab${this.shopTab === t.id ? " is-active" : ""}" data-act="shopTab" data-tab="${t.id}">${t.label}</button>`
-            )
-            .join("")}
-        </div>
-        ${body}
-        <div class="screen-foot"><button class="btn" data-act="${this.backAction()}">Назад</button></div>
-      </div>`,
-      { wide: true }
+          ${body}`,
+      })
     );
   }
 
@@ -270,7 +297,7 @@ export class UI {
     const item = getItem(entry.itemId);
     if (!item) return "";
     const rarity = RARITY[item.rarity];
-    const iconName = item.slot === "weapon" ? WEAPON_ICON[item.kind] || "sword" : SLOT_ICON[item.slot];
+    const glyph = itemGlyph(item, 26);
     const equipped = entry.uid && Object.values(this.save.equipped).includes(entry.uid);
     const current = equippedItem(this.save, item.slot);
     const stats = Object.entries(item.stats)
@@ -297,7 +324,7 @@ export class UI {
 
     return `
       <article class="item-card${equipped ? " is-equipped" : ""}" style="--r:${rarity.color}">
-        <div class="item-card__icon">${icon(iconName, 26, rarity.color)}</div>
+        <div class="item-card__icon">${glyph}</div>
         <div class="item-card__main">
           <h4 style="color:${rarity.color}">${item.name}${equipped ? " <em>· надето</em>" : ""}</h4>
           <div class="item-stats">${stats}</div>
@@ -357,10 +384,12 @@ export class UI {
     const slotsHtml = SLOTS.map((slot) => {
       const item = equippedItem(save, slot);
       const rarity = item ? RARITY[item.rarity] : null;
-      const iconName = slot === "weapon" ? WEAPON_ICON[item?.kind] || "sword" : SLOT_ICON[slot];
+      const glyph = item
+        ? itemGlyph(item, 24)
+        : icon(SLOT_ICON[slot], 24, "#5a5470");
       return `
         <div class="slot${item ? " filled" : ""}" style="--r:${rarity?.color || "#3a3446"}">
-          <div class="slot__icon">${icon(iconName, 24, rarity?.color || "#5a5470")}</div>
+          <div class="slot__icon">${glyph}</div>
           <div class="slot__text">
             <span class="slot__name">${SLOT_NAMES[slot]}</span>
             <strong style="color:${rarity?.color || "#6f6a80"}">${item ? item.name : "пусто"}</strong>
@@ -374,52 +403,42 @@ export class UI {
       .filter((e) => this.gearFilter === "all" || getItem(e.itemId)?.slot === this.gearFilter)
       .sort((a, b) => (getItem(b.itemId)?.price || 0) - (getItem(a.itemId)?.price || 0));
 
-    this.render(
-      `
-      <div class="screen">
-        <header class="screen-head">
-          <div>
-            <p class="eyebrow">Снаряжение</p>
-            <h1>Медвежий доспех</h1>
+    this.renderStone(
+      this.ledgerPage({
+        kicker: "Снаряжение",
+        title: "Медвежий доспех",
+        seal: "gear",
+        inner: `
+          <div class="gear-layout">
+            <section class="gear-slots">${slotsHtml}</section>
+            <section class="stat-panel">
+              <h3>Характеристики</h3>
+              <ul>
+                <li><span>Здоровье</span><b>${stats.maxHp}</b></li>
+                <li><span>Выносливость</span><b>${stats.maxStamina}</b></li>
+                <li><span>Урон</span><b>${stats.damage} × ${stats.damageMult.toFixed(2)}</b></li>
+                <li><span>Скорость атаки</span><b>×${stats.attackSpeed.toFixed(2)}</b></li>
+                <li><span>Броня</span><b>${stats.armor}</b></li>
+                <li><span>Крит</span><b>${stats.crit.toFixed(0)}% / ${stats.critDmg}%</b></li>
+                <li><span>Вампиризм</span><b>${stats.lifesteal}%</b></li>
+                <li><span>Поиск золота / душ</span><b>+${stats.goldFind}% / +${stats.soulFind}%</b></li>
+              </ul>
+            </section>
           </div>
-          <div class="purse" data-purse>${this.purseHtml()}</div>
-        </header>
-
-        <div class="gear-layout">
-          <section class="gear-slots">${slotsHtml}</section>
-          <section class="stat-panel">
-            <h3>Характеристики</h3>
-            <ul>
-              <li><span>Здоровье</span><b>${stats.maxHp}</b></li>
-              <li><span>Выносливость</span><b>${stats.maxStamina}</b></li>
-              <li><span>Урон</span><b>${stats.damage} × ${stats.damageMult.toFixed(2)}</b></li>
-              <li><span>Скорость атаки</span><b>×${stats.attackSpeed.toFixed(2)}</b></li>
-              <li><span>Броня</span><b>${stats.armor}</b></li>
-              <li><span>Крит</span><b>${stats.crit.toFixed(0)}% / ${stats.critDmg}%</b></li>
-              <li><span>Вампиризм</span><b>${stats.lifesteal}%</b></li>
-              <li><span>Поиск золота / душ</span><b>+${stats.goldFind}% / +${stats.soulFind}%</b></li>
-            </ul>
-          </section>
-        </div>
-
-        <div class="tabs tabs--slim">
-          ${filters
-            .map(
-              ([id, label]) =>
-                `<button class="tab${this.gearFilter === id ? " is-active" : ""}" data-act="gearFilter" data-tab="${id}">${label}</button>`
-            )
-            .join("")}
-        </div>
-
-        ${
-          items.length
-            ? `<div class="item-grid">${items.map((e) => this.itemCard(e, "equip")).join("")}</div>`
-            : `<p class="empty">В этой ячейке пока пусто. Загляни в магазин или потряси врагов.</p>`
-        }
-
-        <div class="screen-foot"><button class="btn" data-act="${this.backAction()}">Назад</button></div>
-      </div>`,
-      { wide: true }
+          <div class="tabs tabs--slim">
+            ${filters
+              .map(
+                ([id, label]) =>
+                  `<button class="tab${this.gearFilter === id ? " is-active" : ""}" data-act="gearFilter" data-tab="${id}">${label}</button>`
+              )
+              .join("")}
+          </div>
+          ${
+            items.length
+              ? `<div class="item-grid">${items.map((e) => this.itemCard(e, "equip")).join("")}</div>`
+              : `<p class="empty">В этой ячейке пока пусто. Загляни в магазин или потряси врагов.</p>`
+          }`,
+      })
     );
   }
 
@@ -505,21 +524,15 @@ export class UI {
       })
       .join("");
 
-    this.render(
-      `
-      <div class="screen screen--tree">
-        <header class="screen-head">
-          <div>
-            <p class="eyebrow">Дерево умений</p>
-            <h1>Три пути зверя</h1>
-          </div>
-          <div class="purse" data-purse>${this.purseHtml()}</div>
-        </header>
-        <p class="hint">Души тратятся на ранги. Нажми на узел, чтобы изучить.</p>
-        <div class="tree">${columns}</div>
-        <div class="screen-foot"><button class="btn" data-act="${this.backAction()}">Назад</button></div>
-      </div>`,
-      { wide: true }
+    this.renderStone(
+      this.ledgerPage({
+        kicker: "Дерево умений",
+        title: "Три пути зверя",
+        seal: "skills",
+        inner: `
+          <p class="hint">Души тратятся на ранги. Нажми на узел, чтобы изучить.</p>
+          <div class="tree">${columns}</div>`,
+      })
     );
   }
 
@@ -611,20 +624,23 @@ export class UI {
   }
 
   showSettings() {
-    this.render(`
-      <div class="screen screen--modal">
-        <h1>Настройки</h1>
-        <div class="modal-actions">
-          <button class="btn" data-act="mute">Звук: ${Sfx.muted ? "выключен" : "включён"}</button>
-          <button class="btn btn--ghost" data-act="${this.backAction()}">Назад</button>
-          <button class="btn btn--danger" data-act="wipe">Стереть сохранение</button>
-        </div>
-        <p class="hint">Прогресс хранится в ${SaveStore.backend}. В Telegram он привязан к аккаунту и переносится между устройствами.</p>
-        <p class="hint hint--keys">
-          Движение: A/D или ←/→ · Прыжок: W/Space · Вниз: S ·
-          Атака: J · Тяжёлый удар: K · Рывок: Shift · Рёв: Q · Сгусток: E · Зелье: R · Действие: F · Пауза: Esc
-        </p>
-      </div>`);
+    this.renderStone(
+      this.ledgerPage({
+        kicker: "Тьма Севера",
+        title: "Настройки",
+        seal: "settings",
+        inner: `
+          <div class="ledger-stack">
+            <button class="hub-menu-btn" data-act="mute">Звук: ${Sfx.muted ? "выключен" : "включён"}</button>
+            <button class="hub-menu-btn hub-menu-btn--danger" data-act="wipe">Стереть сохранение</button>
+          </div>
+          <p class="hint">Прогресс хранится в ${SaveStore.backend}. В Telegram он привязан к аккаунту и переносится между устройствами.</p>
+          <p class="hint hint--keys">
+            Движение: A/D или ←/→ · Прыжок: W/Space · Вниз: S ·
+            Атака: J · Тяжёлый удар: K · Рывок: Shift · Рёв: Q · Сгусток: E · Зелье: R · Действие: F · Пауза: Esc
+          </p>`,
+      })
+    );
   }
 
   async wipeSave() {
